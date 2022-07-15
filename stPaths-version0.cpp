@@ -1,11 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <utility>
 #include <algorithm>
-#include <list> 
-#include <stack> 
-#include <stdexcept>
 
 using namespace std;
 vector<int> deleted;

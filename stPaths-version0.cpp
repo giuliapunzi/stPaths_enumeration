@@ -10,16 +10,17 @@ typedef vector<vector<int>> graph;
 graph G;
 
 // create graph from file filename 
-graph create_graph(string filename)
+graph create_graph(char* filename)
 {
-    ifstream input_graph;
-    input_graph.open(filename);
+    FILE* input_graph = fopen(filename, "r");
+    // input_graph.open(filename);
     
     int N, M;
 
     // file contains number of nodes, number of edges at fist line
     // and then one edge per line
-    input_graph >> N >> M;
+    // input_graph >> N >> M;
+    fscanf(input_graph, "%d %d", &N, &M);
 
     G.resize(N);
     deleted.resize(N);
@@ -27,12 +28,13 @@ graph create_graph(string filename)
     int u, v;
     for(int i=0; i<M; i++)
     {
-        input_graph >> u >> v;
+        fscanf(input_graph, "%d,%d", &u, &v);
+        // input_graph >> u >> v;
         G[u].push_back(v);
         G[v].push_back(u);
     }
 
-    input_graph.close();
+    fclose(input_graph);
     return G;
 }
  
@@ -68,6 +70,19 @@ inline int degree(int u)
     }
 
     return deg;
+}
+
+// outputs the vector of (non removed) neighbors of u
+// NOTE: u can be a removed node
+inline vector<int> neighbors(int u)
+{
+    vector<int> neigh; 
+    for(int i = 0; i<G[u].size(); i++){
+        if(!deleted[G[u][i]])
+            neigh.push_back(G[u][i]);
+    }
+
+    return neigh;
 }
 
 
@@ -127,11 +142,12 @@ void DFS(int u, vector<bool> &visited){
 
 // starts a visit from t, and marks as good neighbors the neighbors of s that
 // are reached through the visit. Outputs the vector of these good neighbors.
-vector<int> check_neighbors(int s, int t){
+vector<bool> check_neighbors(int s, int t){
     vector<bool> visited(G.size());
 
+    // DELETION OF S PERFORMED BEFORE CALL TO FUNCTION
     // before starting, mark s as deleted
-    deleted[s] = 1;
+    // deleted[s] = 1;
 
     // initialize all deleted nodes as visited
     for(int i = 0; i< visited.size(); i++){
@@ -148,21 +164,139 @@ vector<int> check_neighbors(int s, int t){
     // launch DFS from node t
     DFS(t, visited);
 
+    vector<int> neigh = neighbors(s);
     // find out which neighbors of s have been visited, and output them
-    vector<int> good_neighbors;
-    for(int i = 0; i < G[s].size(); i++){
-        if(visited[G[s][i]])
-            good_neighbors.push_back(G[s][i]);
+    vector<bool> good_neighbors(neigh.size());
+    for(int i = 0; i < neigh.size(); i++){
+        if(visited[neigh[i]])
+            good_neighbors[i] = true;
+            // good_neighbors.push_back(G[s][i]);
+        else
+            good_neighbors[i] = false;
+            
     }
 
     // undo deletion of s 
-    deleted[s] = 0;
+    // deleted[s] = 0;
 
     return good_neighbors;
 }
 
+// global variable used to count the number of paths
+// (can be substituted with full enumeration)
+int count_paths;
+
+// paths must return the status, either success or fail
+// we do so by returning true/false: true = success
+bool paths(int s, int t){
+    cout << "Inside call with s=" << s << " and t=" << t << endl;
+
+    if(s == t){
+        count_paths++;
+        cout << "Exiting function and returning true " << endl << endl;
+        return true;
+    }
+    
+    vector<int> curr_neigh = neighbors(s);
+    cout << "Current neighbors of s are: ";
+    for(auto x : curr_neigh)
+        cout << x << ", ";
+    cout << endl;
+
+    if(curr_neigh.size() == 0){
+        cout << "Exiting function and returning false " << endl << endl;
+        return false;
+    }
+        
+
+
+    deleted[s] = 1;
+
+    printGraph();
+
+    // the return value is the OR of the values for the neighbors
+    // bool ret_value = false;
+    bool neigh_value = true;
+    bool ret_value = false;
+    int i = 0;
+    while(neigh_value && i < curr_neigh.size()){
+        cout << "Inside while loop for s=" << s << "; neighbor is " << curr_neigh[i] << endl;
+        neigh_value = paths(curr_neigh[i], t);
+        ret_value = ret_value || neigh_value;
+        i++;
+    }
+
+    // if we found a failing neighbor, perform visit from t
+    if(!neigh_value){
+        cout << "Found a failing neighbor for " << s << endl;
+        printGraph();
+        // cout << "Non-deleted neighbors are: ";
+        // for(auto x : neighbors(s)) 
+        //     cout << x <<" ";
+        // cout << endl;
+
+
+        vector<bool> good_neigh = check_neighbors(s, t);
+        // cout << "Good neighbors array: ";
+        // for(auto x : good_neigh) 
+        //     cout << x <<" ";
+        // cout << endl;
+
+        cout << "Good neighbors of s: ";
+        for(int j = 0; j< curr_neigh.size(); j++){
+            if(good_neigh[j])
+                cout << curr_neigh[j] <<" ";
+        }
+        cout << endl;
+
+        // at this point, resume where we left off to recurse in good neighbors
+        for (; i < curr_neigh.size(); i++)
+        {
+            cout << "Index i =" << i << endl;
+            if(good_neigh[i]){
+                cout << "Inside loop for good neighbors; neighbor is " << curr_neigh[i] << endl;
+                bool test = paths(curr_neigh[i], t);
+                ret_value = ret_value || test;
+                // ret_value = ret_value || paths(curr_neigh[i], t);
+            }
+                
+        }
+    }
+
+    deleted[s] = 0;
+    cout << "Reinserting s=" << s <<endl;
+    printGraph();
+    cout << "Exiting function and returning " << ret_value << endl << endl;
+    return ret_value;
+}
+
+void enumerate_paths(int s, int t){
+    count_paths = 0;
+    paths(s,t);
+
+    return;
+}
 
 int main(){
+    create_graph("visit-comma.txt");
+
+    printGraph();
+
+    // remove_node(1);
+    // printGraph();
+    // auto neigh = neighbors(1);
+    // auto good = check_neighbors(1,7);
+    // cout << "Good neighbors of 1 are ";
+    // for(int i = 0; i < good.size(); i++){
+    //     if(good[i])
+    //         cout << neigh[i] << " ";
+    // }
+    // cout << endl;
+
+    // find max degree of graph
+
+    enumerate_paths(0, 8);
+    cout << "paths found are " <<count_paths << endl;
 
     return 0;
 }

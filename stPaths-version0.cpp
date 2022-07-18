@@ -340,7 +340,7 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "tvshows.txt";
+    char* input_filename = "government.txt";
     create_graph(input_filename);
 
     // printGraph();
@@ -383,9 +383,8 @@ int main(){
     ofstream output_file; 
     output_file.open("outputlog-b0.txt", ios::app);
     output_file << "-----------------------------------------------------"<< endl;
-    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << endl;
-    output_file << "MAX_CALLS = " << MAX_CALLS << endl;
-    output_file << calls_performed << " calls performed in " << duration << " secs" << endl;
+    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
     output_file << "Paths found are " <<count_paths << "; Dead ends are " << dead_ends << endl;
     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     output_file.close();

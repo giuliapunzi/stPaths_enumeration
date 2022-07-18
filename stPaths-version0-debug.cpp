@@ -22,8 +22,6 @@ graph create_graph(char* filename)
     // input_graph >> N >> M;
     fscanf(input_graph, "%d %d", &N, &M);
 
-    cout << "Input graph has " << N << " nodes and " << M << " edges. "<< endl;
-
     G.resize(N);
     deleted.resize(N);
 
@@ -188,45 +186,30 @@ vector<bool> check_neighbors(int s, int t){
 // (can be substituted with full enumeration)
 int count_paths;
 
-// global variable used to find how many dead ends there are
 int dead_ends;
-
-// constant which limits the number of function calls
-// plus global variable that takes into account the number of calls performed
-const int MAX_CALLS = 1000000; 
-int calls_performed;
 
 // paths must return the status, either success or fail
 // we do so by returning true/false: true = success
 bool paths(int s, int t){
-    calls_performed++;
-    // cout << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
-    cout << "Call number " << calls_performed <<  flush;
-    cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
-
-    if(calls_performed >= MAX_CALLS)
-        return true;
-    
-    if(calls_performed % 1000 == 0)
-        cout << "Performed a thousand calls"<< endl << flush;
+    cout << "Inside call with s=" << s << " and t=" << t << endl;
 
     if(s == t){
         count_paths++;
-        // cout << "Exiting function and returning true " << endl << endl;
+        cout << "Exiting function and returning true " << endl << endl;
         return true;
     }
     
     vector<int> curr_neigh = neighbors(s);
-    // cout << "Number of neighbors of s are " << curr_neigh.size()<< endl<<flush;
-    // cout << "Current neighbors of s are: ";
-    // for(auto x : curr_neigh)
-    //     cout << x << ", ";
-    // cout << endl << flush;
+    cout << "Current neighbors of s are: ";
+    for(auto x : curr_neigh)
+        cout << x << ", ";
+    cout << endl;
 
     if(curr_neigh.size() == 0){
-        // cout << "Exiting function and returning false " << endl << endl;
-        // dead ends is increased: we failed on a node
+        cout << "Exiting function and returning false " << endl << endl;
         dead_ends++;
+
+        cout << endl << "=======================" << endl << "DEAD END" << endl <<  "=======================" << endl;
         return false;
     }
         
@@ -234,7 +217,7 @@ bool paths(int s, int t){
 
     deleted[s] = 1;
 
-    // printGraph();
+    printGraph();
 
     // the return value is the OR of the values for the neighbors
     // bool ret_value = false;
@@ -242,22 +225,16 @@ bool paths(int s, int t){
     bool ret_value = false;
     int i = 0;
     while(neigh_value && i < curr_neigh.size()){
-        // cout << "Inside while loop for s=" << s << "; neighbor is " << curr_neigh[i] << endl;
+        cout << "Inside while loop for s=" << s << "; neighbor is " << curr_neigh[i] << endl;
         neigh_value = paths(curr_neigh[i], t);
         ret_value = ret_value || neigh_value;
-
-        if(calls_performed >= MAX_CALLS)
-            return true;
-
         i++;
     }
 
-    
-
     // if we found a failing neighbor, perform visit from t
     if(!neigh_value){
-        // cout << "Found a failing neighbor for " << s << endl;
-        // printGraph();
+        cout << "Found a failing neighbor for " << s << endl;
+        printGraph();
         // cout << "Non-deleted neighbors are: ";
         // for(auto x : neighbors(s)) 
         //     cout << x <<" ";
@@ -270,34 +247,31 @@ bool paths(int s, int t){
         //     cout << x <<" ";
         // cout << endl;
 
-        // cout << "Good neighbors of s: ";
-        // for(int j = 0; j< curr_neigh.size(); j++){
-        //     if(good_neigh[j])
-        //         cout << curr_neigh[j] <<" ";
-        // }
-        // cout << endl;
+        cout << "Good neighbors of s: ";
+        for(int j = 0; j< curr_neigh.size(); j++){
+            if(good_neigh[j])
+                cout << curr_neigh[j] <<" ";
+        }
+        cout << endl;
 
         // at this point, resume where we left off to recurse in good neighbors
         for (; i < curr_neigh.size(); i++)
         {
-            // cout << "Index i =" << i << endl;
+            cout << "Index i =" << i << endl;
             if(good_neigh[i]){
-                // cout << "Inside loop for good neighbors; neighbor is " << curr_neigh[i] << endl;
+                cout << "Inside loop for good neighbors; neighbor is " << curr_neigh[i] << endl;
                 bool test = paths(curr_neigh[i], t);
                 ret_value = ret_value || test;
                 // ret_value = ret_value || paths(curr_neigh[i], t);
-
-                if(calls_performed >= MAX_CALLS)
-                    return true;    
             }
                 
         }
     }
 
     deleted[s] = 0;
-    // cout << "Reinserting s=" << s <<endl;
-    // printGraph();
-    // cout << "Exiting function and returning " << ret_value << endl << endl;
+    cout << "Reinserting s=" << s <<endl;
+    printGraph();
+    cout << "Exiting function and returning " << ret_value << endl << endl;
     return ret_value;
 }
 
@@ -309,34 +283,27 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){
-    create_graph("tvshows.txt");
+    create_graph("test2.txt");
 
+    printGraph();
+
+    // remove_node(1);
     // printGraph();
-
+    // auto neigh = neighbors(1);
+    // auto good = check_neighbors(1,7);
+    // cout << "Good neighbors of 1 are ";
+    // for(int i = 0; i < good.size(); i++){
+    //     if(good[i])
+    //         cout << neigh[i] << " ";
+    // }
+    // cout << endl;
 
     // find max degree of graph
-    int maxdeg = 0;
-    for(int u=0; u < G.size(); u++){
-        if(maxdeg< degree(u)){
-            maxdeg = degree(u);
-        }
-    }
-
-    cout << "Graph has maximum degree " << maxdeg << endl; 
-
-    clock_t start;
-    double duration;
-
-    start = clock();
 
     dead_ends = 0;
-    calls_performed = 0;
-    // standard: s = 0, t=last node
-    enumerate_paths(0, G.size()-1);
-    duration = (clock() - start) / (double) CLOCKS_PER_SEC;
-
-    cout << "Paths found are " <<count_paths << " in " << duration << " sec; calls performed are " << calls_performed << endl;
-    cout << "Dead ends are " << dead_ends << endl;
+    enumerate_paths(0, 6);
+    cout << "paths found are " <<count_paths << endl;
+    cout << "dead ends are " << dead_ends << endl;
 
     return 0;
 }

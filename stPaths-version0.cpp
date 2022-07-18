@@ -10,6 +10,7 @@ typedef vector<vector<int>> graph;
 graph G;
 
 // create graph from file filename 
+// WE REMOVE SELF LOOPS
 graph create_graph(char* filename)
 {
     FILE* input_graph = fopen(filename, "r");
@@ -22,7 +23,7 @@ graph create_graph(char* filename)
     // input_graph >> N >> M;
     fscanf(input_graph, "%d %d", &N, &M);
 
-    cout << "Input graph has " << N << " nodes and " << M << " edges. "<< endl;
+    int real_edges = 0;
 
     G.resize(N);
     deleted.resize(N);
@@ -32,9 +33,15 @@ graph create_graph(char* filename)
     {
         fscanf(input_graph, "%d,%d", &u, &v);
         // input_graph >> u >> v;
-        G[u].push_back(v);
-        G[v].push_back(u);
+        if (u != v){
+            G[u].push_back(v);
+            G[v].push_back(u);
+            real_edges++;
+        }
+        
     }
+
+    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
     fclose(input_graph);
     return G;
@@ -177,6 +184,8 @@ vector<bool> check_neighbors(int s, int t){
             good_neighbors[i] = false;
             
     }
+    
+    // cout << "Before outputting good neighbors: size is " << good_neighbors.size() << ", while size of neighbors is "<< neigh.size() << endl<< flush;
 
     // undo deletion of s 
     // deleted[s] = 0;
@@ -201,14 +210,16 @@ int calls_performed;
 bool paths(int s, int t){
     calls_performed++;
     // cout << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
-    cout << "Call number " << calls_performed <<  flush;
-    cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
+    if(calls_performed % 100 == 0){
+        cout << "Call number " << calls_performed <<  flush;
+        cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
+    }
 
     if(calls_performed >= MAX_CALLS)
         return true;
     
-    if(calls_performed % 1000 == 0)
-        cout << "Performed a thousand calls"<< endl << flush;
+    // if(calls_performed % 1000 == 0)
+    //     cout << "Performed a thousand calls"<< endl << flush;
 
     if(s == t){
         count_paths++;
@@ -246,13 +257,13 @@ bool paths(int s, int t){
         neigh_value = paths(curr_neigh[i], t);
         ret_value = ret_value || neigh_value;
 
-        if(calls_performed >= MAX_CALLS)
+        if(calls_performed >= MAX_CALLS){
+            deleted[s] = 0;
             return true;
+        }
 
         i++;
     }
-
-    
 
     // if we found a failing neighbor, perform visit from t
     if(!neigh_value){
@@ -261,7 +272,17 @@ bool paths(int s, int t){
         // cout << "Non-deleted neighbors are: ";
         // for(auto x : neighbors(s)) 
         //     cout << x <<" ";
+        // cout << endl;    
+
+        // cout << " s = " << s << endl << flush; 
+        // cout << "Number of neighbors of s are " << curr_neigh.size()<< endl<<flush;
+        // cout << "The supposed neighbors are: "<< flush;
+        // for(auto nn : curr_neigh)
+        //     cout << nn << " ";
         // cout << endl;
+
+        // cout << "Recomputing neighbors we obtain they are "<< neighbors(s).size() << endl << flush;
+        // cout << "about to compute good" << endl << flush;
 
 
         vector<bool> good_neigh = check_neighbors(s, t);
@@ -277,22 +298,32 @@ bool paths(int s, int t){
         // }
         // cout << endl;
 
+        // cout << "found good neighbors; they are " << curr_neigh.size() << endl << flush;
+        // cout << "size of good neigh: " << good_neigh.size() << endl << flush;
+
         // at this point, resume where we left off to recurse in good neighbors
         for (; i < curr_neigh.size(); i++)
         {
             // cout << "Index i =" << i << endl;
+
+            // cout << "good neigh at index i is" << good_neigh[i]<< endl << flush;
+
             if(good_neigh[i]){
-                // cout << "Inside loop for good neighbors; neighbor is " << curr_neigh[i] << endl;
+                // cout << "Inside loop for good neighbors; neighbor is " << curr_neigh[i] << endl<< flush;
                 bool test = paths(curr_neigh[i], t);
+                // cout << "exited here B" << endl << flush;
                 ret_value = ret_value || test;
                 // ret_value = ret_value || paths(curr_neigh[i], t);
 
-                if(calls_performed >= MAX_CALLS)
-                    return true;    
+                if(calls_performed >= MAX_CALLS){
+                    deleted[s] = 0;
+                    return true;
+                }
             }
                 
         }
     }
+
 
     deleted[s] = 0;
     // cout << "Reinserting s=" << s <<endl;

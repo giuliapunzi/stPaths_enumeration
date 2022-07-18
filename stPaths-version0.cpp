@@ -194,8 +194,12 @@ vector<bool> check_neighbors(int s, int t){
 }
 
 // global variable used to count the number of paths
+// also count the total length of the paths up to now 
 // (can be substituted with full enumeration)
 int count_paths;
+int total_length;
+int curr_path_len;
+// int dead_total_len; 
 
 // global variable used to find how many dead ends there are
 int dead_ends;
@@ -209,7 +213,9 @@ int calls_performed;
 // we do so by returning true/false: true = success
 bool paths(int s, int t){
     calls_performed++;
+    curr_path_len++;
     // cout << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
+    // cout << "Current path length is "<< curr_path_len << "; total length is " << total_length << endl; 
     // if(calls_performed % 1000 == 0){
     //     cout << "Call number " << calls_performed <<  flush;
     //     cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
@@ -224,6 +230,11 @@ bool paths(int s, int t){
     if(s == t){
         count_paths++;
         // cout << "Exiting function and returning true " << endl << endl;
+
+        // every time we arrive at t, we sum to the total length the current path length
+        // we also need to decrease the current path lenght
+        total_length += curr_path_len;
+        curr_path_len--;
         return true;
     }
     
@@ -238,6 +249,9 @@ bool paths(int s, int t){
         // cout << "Exiting function and returning false " << endl << endl;
         // dead ends is increased: we failed on a node
         dead_ends++;
+
+        // decrease current path length as we are backtracking
+        curr_path_len--;
         return false;
     }
         
@@ -329,18 +343,31 @@ bool paths(int s, int t){
     // cout << "Reinserting s=" << s <<endl;
     // printGraph();
     // cout << "Exiting function and returning " << ret_value << endl << endl;
+
+    // we need to decrease current path length IN ANY CASE when returning
+    curr_path_len--;
+    // if(!ret_value){
+
+    //     cout << "About to return false, decreasing current path length" << endl;
+    //     curr_path_len--;
+    // }
+
     return ret_value;
 }
 
 void enumerate_paths(int s, int t){
     count_paths = 0;
+    total_length = 0;
+    dead_ends = 0;
+    calls_performed = 0;
+    curr_path_len = -1;
     paths(s,t);
 
     return;
 }
 
 int main(){ 
-    char* input_filename = "government.txt";
+    char* input_filename = "tvshows.txt";
     create_graph(input_filename);
 
     // printGraph();
@@ -370,14 +397,17 @@ int main(){
 
     start = clock();
 
-    dead_ends = 0;
-    calls_performed = 0;
+    // dead_ends = 0;
+    // calls_performed = 0;
+    // total_length = 0;
+
     // standard: s = 0, t=last node
     enumerate_paths(0, G.size()-1);
+    // enumerate_paths(0,6); // for small example
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
     cout << "Paths found are " <<count_paths << " in " << duration << " sec; calls performed are " << calls_performed << endl;
-    cout << "Dead ends are " << dead_ends << endl;
+    cout << "Dead ends are " << dead_ends << "; Total length is " << total_length << endl;
 
     // reporting to file
     ofstream output_file; 
@@ -385,7 +415,7 @@ int main(){
     output_file << "-----------------------------------------------------"<< endl;
     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    output_file << "Paths found are " <<count_paths << "; Dead ends are " << dead_ends << endl;
+    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << "; Dead ends are " << dead_ends << endl;
     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     output_file.close();
 

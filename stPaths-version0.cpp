@@ -210,10 +210,10 @@ int calls_performed;
 bool paths(int s, int t){
     calls_performed++;
     // cout << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
-    if(calls_performed % 100 == 0){
-        cout << "Call number " << calls_performed <<  flush;
-        cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
-    }
+    // if(calls_performed % 1000 == 0){
+    //     cout << "Call number " << calls_performed <<  flush;
+    //     cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
+    // }
 
     if(calls_performed >= MAX_CALLS)
         return true;
@@ -339,8 +339,9 @@ void enumerate_paths(int s, int t){
     return;
 }
 
-int main(){
-    create_graph("tvshows.txt");
+int main(){ 
+    char* input_filename = "tvshows.txt";
+    create_graph(input_filename);
 
     // printGraph();
 
@@ -352,6 +353,15 @@ int main(){
             maxdeg = degree(u);
         }
     }
+
+    // here we also find the number of edges
+    int numedges = 0;
+    int numnodes = G.size();
+
+    for(int node = 0; node < G.size(); node++){
+        numedges += G[node].size();
+    }
+    numedges = numedges/2;
 
     cout << "Graph has maximum degree " << maxdeg << endl; 
 
@@ -368,6 +378,17 @@ int main(){
 
     cout << "Paths found are " <<count_paths << " in " << duration << " sec; calls performed are " << calls_performed << endl;
     cout << "Dead ends are " << dead_ends << endl;
+
+    // reporting to file
+    ofstream output_file; 
+    output_file.open("outputlog-b0.txt", ios::app);
+    output_file << "-----------------------------------------------------"<< endl;
+    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << endl;
+    output_file << "MAX_CALLS = " << MAX_CALLS << endl;
+    output_file << calls_performed << " calls performed in " << duration << " secs" << endl;
+    output_file << "Paths found are " <<count_paths << "; Dead ends are " << dead_ends << endl;
+    output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    output_file.close();
 
     return 0;
 }

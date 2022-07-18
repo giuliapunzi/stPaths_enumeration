@@ -9,6 +9,9 @@ vector<int> deleted;
 typedef vector<vector<int>> graph;
 graph G;
 
+
+bool is_edge(int u, int v);
+
 // create graph from file filename 
 // WE REMOVE SELF LOOPS
 graph create_graph(char* filename)
@@ -33,7 +36,8 @@ graph create_graph(char* filename)
     {
         fscanf(input_graph, "%d,%d", &u, &v);
         // input_graph >> u >> v;
-        if (u != v){
+        // make sure no self-loops or multiedges are created 
+        if (u != v && !is_edge(u,v)){
             G[u].push_back(v);
             G[v].push_back(u);
             real_edges++;
@@ -199,14 +203,14 @@ vector<bool> check_neighbors(int s, int t){
 int count_paths;
 int total_length;
 int curr_path_len;
-// int dead_total_len; 
 
 // global variable used to find how many dead ends there are
 int dead_ends;
+int dead_total_len; // total length of dead ends: increase by 1 every time we backtrack
 
 // constant which limits the number of function calls
 // plus global variable that takes into account the number of calls performed
-const int MAX_CALLS = 1000000; 
+const int MAX_CALLS = 10000000; 
 int calls_performed;
 
 // paths must return the status, either success or fail
@@ -214,8 +218,9 @@ int calls_performed;
 bool paths(int s, int t){
     calls_performed++;
     curr_path_len++;
-    // cout << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
+    // cout << endl << "Inside call with s=" << s << " and t=" << t << "; call number " << calls_performed <<  endl<< flush;
     // cout << "Current path length is "<< curr_path_len << "; total length is " << total_length << endl; 
+    // cout << "Total dead ends' length so far is "<< dead_total_len << endl<< endl;
     // if(calls_performed % 1000 == 0){
     //     cout << "Call number " << calls_performed <<  flush;
     //     cout << "; so far, paths found are " << count_paths << " and dead ends are "<< dead_ends << endl << flush;
@@ -246,12 +251,16 @@ bool paths(int s, int t){
     // cout << endl << flush;
 
     if(curr_neigh.size() == 0){
-        // cout << "Exiting function and returning false " << endl << endl;
+        // cout << "Exiting function and returning false: INCREASING TOTAL DEAD ENDS " << endl << endl;
         // dead ends is increased: we failed on a node
         dead_ends++;
 
         // decrease current path length as we are backtracking
         curr_path_len--;
+
+        // increase total dead ends' length
+        dead_total_len++;
+
         return false;
     }
         
@@ -346,11 +355,11 @@ bool paths(int s, int t){
 
     // we need to decrease current path length IN ANY CASE when returning
     curr_path_len--;
-    // if(!ret_value){
-
-    //     cout << "About to return false, decreasing current path length" << endl;
-    //     curr_path_len--;
-    // }
+    if(!ret_value){
+        // cout << "About to return false, INCREASING TOTAL DEAD ENDS" << endl;
+        // curr_path_len--;
+        dead_total_len++;
+    }
 
     return ret_value;
 }
@@ -361,6 +370,7 @@ void enumerate_paths(int s, int t){
     dead_ends = 0;
     calls_performed = 0;
     curr_path_len = -1;
+    dead_total_len = 0;
     paths(s,t);
 
     return;
@@ -406,8 +416,10 @@ int main(){
     // enumerate_paths(0,6); // for small example
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
-    cout << "Paths found are " <<count_paths << " in " << duration << " sec; calls performed are " << calls_performed << endl;
-    cout << "Dead ends are " << dead_ends << "; Total length is " << total_length << endl;
+    cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
+
+    cout << "Paths found are " <<count_paths << "; their total length is "<< total_length << endl;
+    cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << endl;
 
     // reporting to file
     ofstream output_file; 
@@ -415,7 +427,8 @@ int main(){
     output_file << "-----------------------------------------------------"<< endl;
     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << "; Dead ends are " << dead_ends << endl;
+    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << endl;
+    output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len <<endl;
     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     output_file.close();
 

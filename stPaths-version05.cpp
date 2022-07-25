@@ -2,12 +2,20 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <stack>
 
 using namespace std;
 vector<int> deleted;
+// vector<int> degree; // keep global degree vector, updating it as deletions and insertions go
+
+stack<int> del_stack; // stack of nodes that have been deleted
 
 typedef vector<vector<int>> graph;
 graph G;
+
+vector<int> reachable; // marks nodes that have been visited by the DFS
+// reachable[i] = -1 if it was a deleted node; = 0 if not reached through the visit and =1 otherwise
+
 
 
 bool is_edge(int u, int v);
@@ -47,6 +55,11 @@ graph create_graph(char* filename)
 
     cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
+    // also initialize reachable vector to be all 1
+    reachable.resize(G.size(), 1);
+    for(int i = 0; i < G.size() ; i++)
+        reachable[i] = 1;
+
     fclose(input_graph);
     return G;
 }
@@ -74,7 +87,7 @@ inline int degree(int u)
 {
     int deg = 0;
     if(deleted[u])
-        return -1;
+        return 0;
     else{
         for(int i = 0; i< G[u].size(); i++){
             if(!deleted[G[u][i]])
@@ -133,6 +146,7 @@ inline void printDeleted(){
 inline void remove_node(int u)
 {
     deleted[u] = 1;
+    del_stack.push(u);
     return;
 }
 
@@ -140,62 +154,51 @@ inline void remove_node(int u)
 // ++++++++++++++++++++++++++++++++ GRAPH VISITS +++++++++++++++++++++++++++++++
 
 // recursive DFS procedure from node u
-void DFS(int u, vector<bool> &visited){
+void DFS(int u){
     // cout << "Entering DFS for " << u << endl << flush;
-    visited[u] = true;
+    reachable[u] = 1;
 
     for(int i = 0; i < G[u].size(); i++)
     {
-        if(!visited[G[u][i]] && !deleted[G[u][i]])
-            DFS(G[u][i], visited);
+        // reachable being equal to zero means that the node has not been deleted nor already visited
+        if(reachable[G[u][i]]==0)
+            DFS(G[u][i]);
     }
 
     return;
 }
 
-// starts a visit from t, and marks as good neighbors the neighbors of s that
-// are reached through the visit. Outputs the vector of these good neighbors.
-vector<bool> check_neighbors(int s, int t){
-    vector<bool> visited(G.size());
-
-    // DELETION OF S PERFORMED BEFORE CALL TO FUNCTION
-    // before starting, mark s as deleted
-    // deleted[s] = 1;
+// starts a visit from t, and marks as reachable the nodes that
+// are reached through the visit.
+void reachability_check(int t){
+    reachable.resize(G.size());
 
     // initialize all deleted nodes as visited
-    for(int i = 0; i< visited.size(); i++){
+    for(int i = 0; i< reachable.size(); i++){
         if(deleted[i])
-            visited[i] = true;
+            reachable[i] = -1;
         else
-            visited[i] = false;
+            reachable[i] = 0;
     }
-
-    // for(auto x : visited)
-    //     cout << x << " " << flush;
-    // cout << endl;
 
     // launch DFS from node t
-    DFS(t, visited);
+    DFS(t);
 
-    vector<int> neigh = neighbors(s);
-    // find out which neighbors of s have been visited, and output them
-    vector<bool> good_neighbors(neigh.size());
-    for(int i = 0; i < neigh.size(); i++){
-        if(visited[neigh[i]])
-            good_neighbors[i] = true;
-            // good_neighbors.push_back(G[s][i]);
-        else
-            good_neighbors[i] = false;
-            
+    // go through all nodes of the graph and deleted the ones with reachable value = 0
+    // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
+    for(int u = 0; u < G.size(); u++){
+        // here we need the differentiation between -1 and 0: otherwise we add to the stack nodes already removed
+        if(reachable[u] == 0){
+            // deleted[u] = true;
+            // del_stack.push(u);
+            remove_node(u);
+        }
     }
-    
-    // cout << "Before outputting good neighbors: size is " << good_neighbors.size() << ", while size of neighbors is "<< neigh.size() << endl<< flush;
 
-    // undo deletion of s 
-    // deleted[s] = 0;
-
-    return good_neighbors;
+    return;
 }
+
+
 
 // global variable used to count the number of paths
 // also count the total length of the paths up to now 
@@ -224,137 +227,157 @@ bool paths_05(int u, int t){
         return true;
     }
 
-    
-    // vector<int> curr_neigh = neighbors(u); // problema: allocare e deallocare vector, DA CAMBIARE
-    if(degree(u) == 0 && !lampadina){ // mettere dopo 252
-        // VISITA: marca cancellati i nodi non raggiungibili da t + vettore reachable
-        // accendo la lampadina
-        lampadina = true;
-        return false;
-    }
 
-    remove_node(u); // also adds to stack
-    
-    // NEED TO ADD STACK
+    // we have non-deleted neighbors to explore
+    if(degree(u) > 0){
+        remove_node(u); // also adds to stack
 
-    bool success = true; 
-    for(auto v: curr_neigh){ // actually, next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
-        success = paths_05(v, t);
-        if(!success && !reachable[u]){ // ALTERNATIVE: if(degree(u) == 0 && lampadina)
-            return false; // return at first failing neighbor
-        }
-        if(!success && reachable[u]) // if(degree(u)>0 && lampadina)
-            lampadina=false;
-    }
-
-    // rimettere le cose a posto
-    // pop stack until u (included) and mark as not deleted
-    return true;
-
-
-
-
-    calls_performed++;
-    curr_path_len++;
-
-    if(calls_performed >= MAX_CALLS)
-        return true;
-    
-    if(calls_performed % 10000 == 0)
-        cout << "*" << flush;
-
-    if(s == t){
-        count_paths++;
-        good_diff_len++;
-
-        // every time we arrive at t, we sum to the total length the current path length
-        // we also need to decrease the current path length
-        total_length += curr_path_len;
-        curr_path_len--;
-        return true;
-    }
-    
-    vector<int> curr_neigh = neighbors(s);
-    
-
-    if(curr_neigh.size() == 0){
-        // dead ends is increased: we failed on a node
-        dead_ends++;
-
-        // increase total dead ends' length
-        dead_total_len = dead_total_len + curr_path_len;
-        dead_diff_len++;
-
-        // decrease current path length as we are backtracking
-        curr_path_len--;
-
-        
-        return false;
-    }
-        
-
-
-    deleted[s] = 1;
-
-    // printGraph();
-
-    // the return value is the OR of the values for the neighbors
-    // bool ret_value = false;
-    bool neigh_value = true;
-    bool ret_value = false;
-    bool first_good = false;
-    // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
-    int i = 0;
-    while(neigh_value && i < curr_neigh.size()){
-        neigh_value = paths(curr_neigh[i], t);
-        ret_value = ret_value || neigh_value;
-
-
-        if(calls_performed >= MAX_CALLS){
-            deleted[s] = 0;
-            return true;
-        }
-
-        i++;
-    }
-
-    // if we found a failing neighbor, perform visit from t
-    if(!neigh_value){
-        vector<bool> good_neigh = check_neighbors(s, t);
-
-        // at this point, resume where we left off to recurse in good neighbors
-        for (; i < curr_neigh.size(); i++)
-        {
-            if(good_neigh[i]){
-                bool test = paths(curr_neigh[i], t);
-                ret_value = ret_value || test;
-
-
-                if(calls_performed >= MAX_CALLS){
-                    deleted[s] = 0;
-                    return true;
+        bool success = true; 
+        for(auto v: G[u]){ 
+            if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
+                success = paths_05(v, t);
+                if(!success && !reachable[u]){ // ALTERNATIVE: if(degree(u) == 0 && lampadina)
+                    return false; // return at first failing neighbor
                 }
+                if(!success && reachable[u]) // if(degree(u)>0 && lampadina) HERE WE ARE AT THE ARTICULATION POINT
+                    lampadina=false;
             }
-                
+            
         }
+
+        // rimettere le cose a posto
+        // pop stack until u (included) and mark as not deleted
+        // WHAT ABOUT REACHABILITY?
+        while(del_stack.top() != u){
+            deleted[del_stack.top()] = 0;
+            del_stack.pop();
+        }
+        deleted[u] = 0;
+        del_stack.pop();
+
+        return true;
     }
 
 
-    deleted[s] = 0;
+
+    // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
+    // if(degree(u) == 0 && !lampadina){ 
+    if(lampadina)
+        return false;
+    
+    
+    // VISITA: marca cancellati i nodi non raggiungibili da t + vettore reachable
+    reachability_check(t);
+    // accendo la lampadina
+    lampadina = true;
+    
+    return false;
 
 
-    if(!ret_value){
-        dead_diff_len++;
-    }
 
-    if(ret_value)
-        good_diff_len++;
+    // ======================FROM VERSION ZERO ============================
+
+    // calls_performed++;
+    // curr_path_len++;
+
+    // if(calls_performed >= MAX_CALLS)
+    //     return true;
+    
+    // if(calls_performed % 10000 == 0)
+    //     cout << "*" << flush;
+
+    // if(s == t){
+    //     count_paths++;
+    //     good_diff_len++;
+
+    //     // every time we arrive at t, we sum to the total length the current path length
+    //     // we also need to decrease the current path length
+    //     total_length += curr_path_len;
+    //     curr_path_len--;
+    //     return true;
+    // }
+    
+    // vector<int> curr_neigh = neighbors(s);
+    
+
+    // if(curr_neigh.size() == 0){
+    //     // dead ends is increased: we failed on a node
+    //     dead_ends++;
+
+    //     // increase total dead ends' length
+    //     dead_total_len = dead_total_len + curr_path_len;
+    //     dead_diff_len++;
+
+    //     // decrease current path length as we are backtracking
+    //     curr_path_len--;
+
+        
+    //     return false;
+    // }
+        
 
 
-    // we need to decrease current path length IN ANY CASE when returning
-    curr_path_len--;
+    // deleted[s] = 1;
 
-    return ret_value;
+    // // printGraph();
+
+    // // the return value is the OR of the values for the neighbors
+    // // bool ret_value = false;
+    // bool neigh_value = true;
+    // bool ret_value = false;
+    // bool first_good = false;
+    // // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
+    // int i = 0;
+    // while(neigh_value && i < curr_neigh.size()){
+    //     neigh_value = paths(curr_neigh[i], t);
+    //     ret_value = ret_value || neigh_value;
+
+
+    //     if(calls_performed >= MAX_CALLS){
+    //         deleted[s] = 0;
+    //         return true;
+    //     }
+
+    //     i++;
+    // }
+
+    // // if we found a failing neighbor, perform visit from t
+    // if(!neigh_value){
+    //     vector<bool> good_neigh = check_neighbors(s, t);
+
+    //     // at this point, resume where we left off to recurse in good neighbors
+    //     for (; i < curr_neigh.size(); i++)
+    //     {
+    //         if(good_neigh[i]){
+    //             bool test = paths(curr_neigh[i], t);
+    //             ret_value = ret_value || test;
+
+
+    //             if(calls_performed >= MAX_CALLS){
+    //                 deleted[s] = 0;
+    //                 return true;
+    //             }
+    //         }
+                
+    //     }
+    // }
+
+
+    // deleted[s] = 0;
+
+
+    // if(!ret_value){
+    //     dead_diff_len++;
+    // }
+
+    // if(ret_value)
+    //     good_diff_len++;
+
+
+    // // we need to decrease current path length IN ANY CASE when returning
+    // curr_path_len--;
+
+    // return ret_value;
 }
 
 void enumerate_paths(int s, int t){
@@ -366,7 +389,7 @@ void enumerate_paths(int s, int t){
     good_diff_len = 0;
     dead_diff_len = 0;
     dead_total_len = 0;
-    paths(s,t);
+    paths_05(s,t);
     good_diff_len--; // source returned true and thus added one 
 
     return;
@@ -414,15 +437,15 @@ int main(){
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
     // reporting to file
-    ofstream output_file; 
-    output_file.open("output-b0.txt", ios::app);
-    output_file << "-----------------------------------------------------"<< endl;
-    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    output_file.close();
+    // ofstream output_file; 
+    // output_file.open("output-b0.txt", ios::app);
+    // output_file << "-----------------------------------------------------"<< endl;
+    // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
+    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    // output_file.close();
 
     return 0;
 }

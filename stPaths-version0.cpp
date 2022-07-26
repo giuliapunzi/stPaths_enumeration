@@ -153,10 +153,13 @@ void DFS(int u, vector<bool> &visited){
     return;
 }
 
+int visits_performed;
+
 // starts a visit from t, and marks as good neighbors the neighbors of s that
 // are reached through the visit. Outputs the vector of these good neighbors.
 vector<bool> check_neighbors(int s, int t){
     vector<bool> visited(G.size());
+    visits_performed++;
 
     // DELETION OF S PERFORMED BEFORE CALL TO FUNCTION
     // before starting, mark s as deleted
@@ -330,6 +333,7 @@ void enumerate_paths(int s, int t){
     good_diff_len = 0;
     dead_diff_len = 0;
     dead_total_len = 0;
+    visits_performed = 0;
     paths(s,t);
     good_diff_len--; // source returned true and thus added one 
 
@@ -337,7 +341,7 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "tvshows.txt";
+    char* input_filename = "test-diff.txt";
     create_graph(input_filename);
 
     // printGraph();
@@ -373,20 +377,21 @@ int main(){
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
     cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
+    cout << "Visits performed are  " << visits_performed << endl;
 
     cout << "Paths found are " <<count_paths << "; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
     // reporting to file
-    ofstream output_file; 
-    output_file.open("output-b0.txt", ios::app);
-    output_file << "-----------------------------------------------------"<< endl;
-    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    output_file.close();
+    // ofstream output_file; 
+    // output_file.open("output-b0.txt", ios::app);
+    // output_file << "-----------------------------------------------------"<< endl;
+    // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
+    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    // output_file.close();
 
     return 0;
 }

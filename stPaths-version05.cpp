@@ -143,6 +143,7 @@ inline void printGraph()
     cout << endl;
 }
 
+
 inline void printDeleted(){
     for(int i= 0; i<deleted.size(); i++){
         if(deleted[i])
@@ -154,7 +155,7 @@ inline void printDeleted(){
 // ++++++++++++++++++++++++++++++++++ GRAPH MODIFIERS ++++++++++++++++++++++++++++++++
 
 // remove node u from the graph, by marking deleted vector to 0
-inline void remove_node(int u)
+inline void remove_node(int u) 
 {
     deleted[u] = 1;
     del_stack.push(u);
@@ -201,7 +202,6 @@ int visits_performed;
 // starts a visit from t, and marks as reachable the nodes that
 // are reached through the visit.
 void reachability_check(int t){
-    reachable.resize(G.size());
     visits_performed++;
 
     // initialize all deleted nodes as visited
@@ -247,7 +247,7 @@ long dead_diff_len; // edges only belonging to dead ends; increase by 1 every ti
 
 // constant which limits the number of function calls
 // plus global variable that takes into account the number of calls performed
-const int MAX_CALLS = 1000000; 
+const int MAX_CALLS = 25000000; 
 int calls_performed;
 bool lampadina;
 
@@ -256,6 +256,9 @@ bool lampadina;
 bool paths_05(int u, int t){
     calls_performed++;
     curr_path_len++;
+
+    if(calls_performed >= MAX_CALLS)
+        return true;
 
     // base case
     if(u== t){
@@ -288,7 +291,6 @@ bool paths_05(int u, int t){
                     lampadina=false;
                 }
             }
-            
         }
 
         // rimettere le cose a posto       
@@ -347,7 +349,7 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "test2.txt";
+    char* input_filename = "visit-comma.txt";
     create_graph(input_filename); // initialize 
 
     // printGraph();
@@ -389,15 +391,16 @@ int main(){
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
     // reporting to file
-    // ofstream output_file; 
-    // output_file.open("output-b0.txt", ios::app);
-    // output_file << "-----------------------------------------------------"<< endl;
-    // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    // output_file.close();
+    ofstream output_file; 
+    output_file.open("output-v05.txt", ios::app);
+    output_file << "-----------------------------------------------------"<< endl;
+    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
+    output_file << "Visits of the graph performed are  " << visits_performed << endl;
+    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    output_file.close();
 
     return 0;
 }

@@ -341,7 +341,7 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "test2.txt";
+    char* input_filename = "test3.txt";
     create_graph(input_filename);
 
     // printGraph();

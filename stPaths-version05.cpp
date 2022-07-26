@@ -39,6 +39,13 @@ graph create_graph(char* filename)
     current_degree.resize(N, 0);
     reachable.resize(N, 1);
 
+    // initialize reachable vector to be all 1 and degree to be zero
+    for(int i = 0; i < G.size() ; i++){
+        reachable[i] = 1;
+        current_degree[i] = 0;
+    }
+        
+
     int u, v;
     for(int i=0; i<M; i++)
     {
@@ -57,9 +64,6 @@ graph create_graph(char* filename)
 
     cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
-    // also initialize reachable vector to be all 1
-    for(int i = 0; i < G.size() ; i++)
-        reachable[i] = 1;
 
     fclose(input_graph);
     return G;
@@ -84,7 +88,7 @@ inline bool is_edge(int u, int v)
 
 // returns degree of node u; if node is deleted return zero 
 // remember: need to take into account deleted edges
-inline int degree(int u)
+inline int olddegree(int u)
 {
     // NOTE: IN OUR RECURSIVE CALLS WE ASK FOR THE DEGREE OF A NODE THAT IS CURRENTLY REMOVED
     int deg = 0;
@@ -99,6 +103,10 @@ inline int degree(int u)
 
     return deg;
     // return current_degree[u]; 
+}
+
+inline int degree(int u){
+    return current_degree[u];
 }
 
 // outputs the vector of (non removed) neighbors of u
@@ -150,6 +158,23 @@ inline void remove_node(int u)
 {
     deleted[u] = 1;
     del_stack.push(u);
+
+    for (auto v : G[u])
+        current_degree[v]--;
+    
+    return;
+}
+
+// reinserts top of the stack node in the graph
+inline void reinsert_node()
+{
+    int u = del_stack.top();
+    del_stack.pop();
+    deleted[u] = 0;
+
+    for (auto v : G[u])
+        current_degree[v]++;
+    
     return;
 }
 
@@ -268,13 +293,14 @@ bool paths_05(int u, int t){
 
         // rimettere le cose a posto       
         // pop stack until u (included) and mark as not deleted
-        // WHAT ABOUT REACHABILITY?
         while(del_stack.top() != u){
-            deleted[del_stack.top()] = 0;
-            del_stack.pop();
+            // deleted[del_stack.top()] = 0;
+            // del_stack.pop();
+            reinsert_node();
         }
-        deleted[u] = 0;
-        del_stack.pop();
+        // deleted[u] = 0;
+        // del_stack.pop();
+        reinsert_node(); // here we are inserting u 
 
         curr_path_len--;
         good_diff_len++;
@@ -302,112 +328,6 @@ bool paths_05(int u, int t){
     dead_diff_len++;
     curr_path_len--;
     return false;
-
-
-
-    // ======================FROM VERSION ZERO ============================
-
-    // calls_performed++;
-    // curr_path_len++;
-
-    // if(calls_performed >= MAX_CALLS)
-    //     return true;
-    
-    // if(calls_performed % 10000 == 0)
-    //     cout << "*" << flush;
-
-    // if(s == t){
-    //     count_paths++;
-    //     good_diff_len++;
-
-    //     // every time we arrive at t, we sum to the total length the current path length
-    //     // we also need to decrease the current path length
-    //     total_length += curr_path_len;
-    //     curr_path_len--;
-    //     return true;
-    // }
-    
-    // vector<int> curr_neigh = neighbors(s);
-    
-
-    // if(curr_neigh.size() == 0){
-    //     // dead ends is increased: we failed on a node
-    //     dead_ends++;
-
-    //     // increase total dead ends' length
-    //     dead_total_len = dead_total_len + curr_path_len;
-    //     dead_diff_len++;
-
-    //     // decrease current path length as we are backtracking
-    //     curr_path_len--;
-
-        
-    //     return false;
-    // }
-        
-
-
-    // deleted[s] = 1;
-
-    // // printGraph();
-
-    // // the return value is the OR of the values for the neighbors
-    // // bool ret_value = false;
-    // bool neigh_value = true;
-    // bool ret_value = false;
-    // bool first_good = false;
-    // // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
-    // int i = 0;
-    // while(neigh_value && i < curr_neigh.size()){
-    //     neigh_value = paths(curr_neigh[i], t);
-    //     ret_value = ret_value || neigh_value;
-
-
-    //     if(calls_performed >= MAX_CALLS){
-    //         deleted[s] = 0;
-    //         return true;
-    //     }
-
-    //     i++;
-    // }
-
-    // // if we found a failing neighbor, perform visit from t
-    // if(!neigh_value){
-    //     vector<bool> good_neigh = check_neighbors(s, t);
-
-    //     // at this point, resume where we left off to recurse in good neighbors
-    //     for (; i < curr_neigh.size(); i++)
-    //     {
-    //         if(good_neigh[i]){
-    //             bool test = paths(curr_neigh[i], t);
-    //             ret_value = ret_value || test;
-
-
-    //             if(calls_performed >= MAX_CALLS){
-    //                 deleted[s] = 0;
-    //                 return true;
-    //             }
-    //         }
-                
-    //     }
-    // }
-
-
-    // deleted[s] = 0;
-
-
-    // if(!ret_value){
-    //     dead_diff_len++;
-    // }
-
-    // if(ret_value)
-    //     good_diff_len++;
-
-
-    // // we need to decrease current path length IN ANY CASE when returning
-    // curr_path_len--;
-
-    // return ret_value;
 }
 
 void enumerate_paths(int s, int t){
@@ -427,10 +347,10 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "test-diff.txt";
+    char* input_filename = "test2.txt";
     create_graph(input_filename); // initialize 
 
-    printGraph();
+    // printGraph();
 
 
     // find max degree of graph

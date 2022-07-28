@@ -247,7 +247,7 @@ long dead_diff_len; // edges only belonging to dead ends; increase by 1 every ti
 
 // constant which limits the number of function calls
 // plus global variable that takes into account the number of calls performed
-const int MAX_CALLS = 100000000000; 
+const int MAX_CALLS = 25000000; 
 int calls_performed;
 bool lampadina;
 
@@ -349,7 +349,7 @@ void enumerate_paths(int s, int t){
 }
 
 int main(){ 
-    char* input_filename = "graph-75-100.txt";
+    char* input_filename = "visit-comma.txt";
     create_graph(input_filename); // initialize 
 
     // printGraph();

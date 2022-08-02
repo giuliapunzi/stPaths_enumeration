@@ -678,6 +678,7 @@ bool paths_095(int u, int first_t, int t){
                     find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
                     // PROBLEM: COMPUTING CATERPILLAR HERE ONLY TO THE NEXT ART POINT KEEPS NODES DELETED FOR NEXT CALLS. FOR NOW, CATERPILLAR FROM T
                     remove_simple(u);
+                    first_t = last_art; // update the first t
                     // deleted[u] = 1;
                 }
             }

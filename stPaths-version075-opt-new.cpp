@@ -37,7 +37,7 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-75-100.txt";
+char* input_filename = "graph-20-40.txt";
 
 bool is_edge(int u, int v);
 

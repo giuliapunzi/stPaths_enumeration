@@ -279,6 +279,7 @@ void find_artpts(int s, int u)
                 if (parent[u] != -1 && low[v] >= disc[u]){ // here is where I close my articulation point
                     is_art[u] = true;
                     close_after_s = found_s; // when I am about to exit my recursive call, I have seen s
+                    // cout << u << " is an art point" << endl;
 
                     // if I am an art point and I opened before s, closed after, then I am a good one
                     if(open_before_s && close_after_s)
@@ -424,7 +425,6 @@ bool paths_075(int u, int t){
         total_length+=curr_path_len;
         curr_path_len--;
         good_diff_len++;
-        // cout << "S" << endl;
 
         // cout << "Sol ";
         // for(auto x : current_sol)
@@ -435,9 +435,6 @@ bool paths_075(int u, int t){
         return true;
     }
 
-    // printGraph();
-
-    // bool first_time = true;
     // we have non-deleted neighbors to explore
     if(degree(u) > 0){
         remove_node(u); // also adds to stack
@@ -446,8 +443,6 @@ bool paths_075(int u, int t){
         int num_good_children = 0;
         for(auto v: G[u]){ 
             if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
-                // if(!first_time)
-                //     cout << u << " ";
                 success = paths_075(v, t);
 
                 if(success)
@@ -461,7 +456,7 @@ bool paths_075(int u, int t){
                 if(degree(u) == 0 && lampadina){ // ALTERNATIVE
                     curr_path_len--;
                     dead_diff_len++;
-                    //current_sol.pop_back();
+                    // current_sol.pop_back();
                     return false; // return at first failing neighbor
                 }
 
@@ -480,15 +475,15 @@ bool paths_075(int u, int t){
 
                     curr_path_len--;
                     good_diff_len++;
-                    //current_sol.pop_back();
+                    // current_sol.pop_back();
                     return true; // at least one child was good at this point
                 }
 
                 // SAME AS degree(u)>num_good_children AND LAMPADINA
                 if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
                     lampadina=false;
-                    // cout << "Back to " << u << endl;
-                    // printGraph();
+                    // cout << "Back to " << u <<  "; about to compute caterpillar" << endl;
+            
                     // deleted[u] = 0; // otherwise t does not reach the source in caterpillar!!
                     reinsert_simple(u);
                     find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
@@ -511,7 +506,7 @@ bool paths_075(int u, int t){
 
         curr_path_len--;
         good_diff_len++;
-        //current_sol.pop_back();
+        // current_sol.pop_back();
         return true;
     }
 
@@ -521,10 +516,12 @@ bool paths_075(int u, int t){
     if(lampadina){
         curr_path_len--;
         dead_diff_len++;
-        //current_sol.pop_back();
+        // current_sol.pop_back();
         return false;
     }
 
+
+    // cout << "found dead end in " << u << "; computing reachability." << endl;
 
     // cout << "X" << endl;
     // here we are just arriving in a node of degree zero
@@ -537,7 +534,7 @@ bool paths_075(int u, int t){
     dead_total_len+=curr_path_len;
     dead_diff_len++;
     curr_path_len--;
-    //current_sol.pop_back();
+    // current_sol.pop_back();
     return false;
 }
 

@@ -37,7 +37,7 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-15-30.txt";
+char* input_filename = "graph-40-80.txt";
 
 bool is_edge(int u, int v);
 
@@ -389,7 +389,7 @@ int visit_time;
 int current_s;
 int last_art;
 
-void find_artpts(int u)
+void find_artpts(int s, int u)
 {
     cat_stack.push_back(u);
     // Count of children in DFS Tree
@@ -417,7 +417,7 @@ void find_artpts(int u)
                 good_for_current_BCC = false;
                 parent[v] = u;
                 children++;
-                find_artpts(v);
+                find_artpts(s, v);
 
                 // if we are the root and we just found s, v is the only good neighbor
                 if(parent[u] == -1){
@@ -436,7 +436,7 @@ void find_artpts(int u)
                 // its child is more than discovery value of u.
                 if (parent[u] != -1 && low[v] >= disc[u]){ // here is where I close my articulation point
                     is_art[u] = true;
-                    // cout << u << " is an art point";
+                    // cout << u << " is an art point" << endl;
                     // cout << " found because of " << v << endl;
                     // cout << "Current source is " << current_s << endl;
 
@@ -445,7 +445,7 @@ void find_artpts(int u)
                     //     cout << x << " ";
                     // cout << endl;
                     
-                    // I need to pop the stack until v (the last neighbor) If s in inside, I am good. also, delete nodes
+                    // I need to pop the stack until v (the last neighbor) If current s is inside, I am good. also, delete nodes
                     int x = cat_stack.back();
                     while(x != v){
                         // cout << "x is " << x << endl;
@@ -469,6 +469,11 @@ void find_artpts(int u)
                     // NEW: SET THE CURRENT ART POINT AS S!
                     if(good_for_current_BCC){
                         good_art[u] = true;
+                        // if at this point the current source was s, this is the last art point
+                        // NEED TO CHECK THAT IT IS DIFFERENT FROM S
+                        if(current_s == s && u != s)
+                            last_art = u;
+
                         current_s = u;
                     }
                         
@@ -526,6 +531,7 @@ void find_caterpillar(int s, int t)
     // found_s = false;
     visits_performed_cat++;
     current_s = s;
+    last_art = -1;
 
     for(int i = 0; i < G.size(); i++){
         visited[i] = false;
@@ -537,7 +543,12 @@ void find_caterpillar(int s, int t)
     parent[t] = -1;
 
     // only interested in the ones from s to t = caterpillar
-    find_artpts(t);
+    find_artpts(s,t);
+
+    // if this happened, then s and t are in the same BCC
+    if (last_art== -1)
+        last_art = t;
+    
  
     // Printing the APs
     // cout << "Printing the art pts: ";
@@ -743,7 +754,7 @@ int main(){
     // char* input_filename = "graph-75-100.txt";
     create_graph(input_filename); // initialize 
 
-    printGraph();
+    // printGraph();
 
     int s  = 0;
     int t = G.size() -1;
@@ -778,6 +789,7 @@ int main(){
 
     deleted_w_caterpillar = 0;
     find_caterpillar(0, G.size()-1); // last art is now set up
+    // cout << "Last art point is " << last_art << endl; 
 
     // here we also find the number of edges
     int numedges = 0;

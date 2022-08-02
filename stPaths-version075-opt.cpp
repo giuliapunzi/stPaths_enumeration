@@ -37,7 +37,7 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-75-100.txt";
+char* input_filename = "graph-40-80.txt";
 
 bool is_edge(int u, int v);
 
@@ -614,7 +614,8 @@ int main(){
     
     // cout<< "Articulation points found: ";
     // for(int i= 0; i< G.size(); i++)
-    //     cout << is_art[i] << " " ;
+    //     if (good_art[i])
+    //         cout << i << " " ;
     // cout << endl;
 
     cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;

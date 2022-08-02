@@ -229,16 +229,19 @@ vector<int> low;
 vector<bool> is_art;
 vector<bool> good_art;
 vector<int> parent; 
+vector<int> cat_stack;
 int visit_time;
-bool found_s;
+// bool found_s;
+int current_s;
 
-void find_artpts(int s, int u)
+void find_artpts(int u)
 {
+    cat_stack.push_back(u);
     // Count of children in DFS Tree
     int children = 0;
-    if(u== s){
-        found_s = true;
-    }
+    // if(u== s){
+    //     found_s = true;
+    // }
  
     // Mark the current node as visited
     visited[u] = true;
@@ -246,10 +249,9 @@ void find_artpts(int s, int u)
     // Initialize discovery time and low value
     disc[u] = low[u] = ++visit_time;
     
-    bool open_before_s = !found_s; // at the start of my rec call, have I seen s?
-    bool close_after_s;
     int root_correct_neigh = -1;
     bool root_found = false; // becomes true when the root finds s
+    bool good_for_current_BCC;    
 
     // Go through all non-deleted neighbors of u
     for (auto v : G[u]) {
@@ -257,13 +259,14 @@ void find_artpts(int s, int u)
             // If v is not visited yet, then make it a child of u
             // in DFS tree and recur for it
             if (!visited[v]) {
+                good_for_current_BCC = false;
                 parent[v] = u;
                 children++;
-                find_artpts(s, v);
+                find_artpts(v);
 
                 // if we are the root and we just found s, v is the only good neighbor
                 if(parent[u] == -1){
-                    if(found_s && !root_found){ 
+                    if(!root_found){ 
                         root_correct_neigh = v; 
                         root_found = true;
                         // cout << "Root correct neighbor is " << root_correct_neigh << endl;
@@ -278,12 +281,45 @@ void find_artpts(int s, int u)
                 // its child is more than discovery value of u.
                 if (parent[u] != -1 && low[v] >= disc[u]){ // here is where I close my articulation point
                     is_art[u] = true;
-                    close_after_s = found_s; // when I am about to exit my recursive call, I have seen s
+                    // cout << u << " is an art point";
+                    // cout << " found because of " << v << endl;
+                    // cout << "Current source is " << current_s << endl;
 
-                    // if I am an art point and I opened before s, closed after, then I am a good one
-                    if(open_before_s && close_after_s)
+                    // cout << "stack is: ";
+                    // for (auto x : cat_stack)
+                    //     cout << x << " ";
+                    // cout << endl;
+                    
+                    // I need to pop the stack until v (the last neighbor) If s in inside, I am good. also, delete nodes
+                    int x = cat_stack.back();
+                    while(x != v){
+                        // cout << "x is " << x << endl;
+                        if(x == current_s){
+                            good_for_current_BCC = true;
+                            // cout << u << " is a good art point "<< endl;
+                        }
+
+                        // deleted[x] = 1;
+                        cat_stack.pop_back();
+                        x = cat_stack.back();
+                    }
+                    if(x == current_s){
+                        good_for_current_BCC = true;
+                        // cout << u << " is a good art point "<< endl;
+                    }
+                    cat_stack.pop_back(); // remove also v
+
+                    // cout << "good for curr bcc? " << good_for_current_BCC<<endl;
+
+                    // NEW: SET THE CURRENT ART POINT AS S!
+                    if(good_for_current_BCC){
                         good_art[u] = true;
-                    else{ // if I am not good, I need to delete my neighbors that have discovery time greater than v
+                        current_s = u;
+                    }
+                        
+
+                    if(!good_for_current_BCC){ // if I am not good, I need to delete my neighbors that have discovery time greater than v
+                        // cout << u << " is NOT a good art point "<< endl;
                         for(auto neigh : G[u]){
                             if(visited[neigh] && !deleted[neigh] && disc[neigh] >= disc[v]){
                                 remove_node(neigh);
@@ -292,7 +328,6 @@ void find_artpts(int s, int u)
                             }
                         }
                     }
-                    open_before_s = !found_s; // I need to reset open before s, for the possible next BCCs
                 }
             }
     
@@ -314,7 +349,7 @@ void find_artpts(int s, int u)
         //         // cout << "Removing " << neigh << endl;
         //         remove_node(neigh);
         //         deleted_w_caterpillar++;
-                // cout << "[caterpillar removed " << neigh << "]" << endl;
+        //         // cout << "[caterpillar removed " << neigh << "]" << endl;
         //     }
         // }
     }
@@ -331,9 +366,11 @@ void find_caterpillar(int s, int t)
     is_art.resize(G.size());
     good_art.resize(G.size());
     parent.resize(G.size());
+    cat_stack.erase(cat_stack.begin(), cat_stack.end());
     visit_time = 0;
-    found_s = false;
+    // found_s = false;
     visits_performed_cat++;
+    current_s = s;
 
     for(int i = 0; i < G.size(); i++){
         visited[i] = false;
@@ -345,7 +382,7 @@ void find_caterpillar(int s, int t)
     parent[t] = -1;
 
     // only interested in the ones from s to t = caterpillar
-    find_artpts(s, t);
+    find_artpts(t);
  
     // Printing the APs
     // cout << "Printing the art pts: ";
@@ -625,6 +662,7 @@ int main(){
     //     cout << deleted[i] << " " ;
     // cout << endl;
 
+    // printGraph();
 
 
     clock_t start;
@@ -634,7 +672,6 @@ int main(){
 
     // standard: s = 0, t=last node
     enumerate_paths(0, G.size()-1);
-    // enumerate_paths(0,6); // for small example
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
     cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;

@@ -37,11 +37,14 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-40-80.txt";
+char* input_filename = "graph-75-100.txt";
 
 bool is_edge(int u, int v);
 
 int print_count;
+
+long visits_performed_reach;
+long visits_performed_cat;
 
 // create graph from file filename 
 // WE REMOVE SELF LOOPS
@@ -330,6 +333,7 @@ void find_caterpillar(int s, int t)
     parent.resize(G.size());
     visit_time = 0;
     found_s = false;
+    visits_performed_cat++;
 
     for(int i = 0; i < G.size(); i++){
         visited[i] = false;
@@ -368,12 +372,11 @@ void DFS(int u){
     return;
 }
 
-int visits_performed;
 
 // starts a visit from t, and marks as reachable the nodes that
 // are reached through the visit.
 void reachability_check(int t){
-    visits_performed++;
+    visits_performed_reach++;
 
     // initialize all deleted nodes as visited
     for(int i = 0; i< reachable.size(); i++){
@@ -401,7 +404,6 @@ void reachability_check(int t){
 
     return;
 }
-
 
 
 
@@ -435,7 +437,7 @@ bool paths_075(int u, int t){
 
     // printGraph();
 
-    bool first_time = true;
+    // bool first_time = true;
     // we have non-deleted neighbors to explore
     if(degree(u) > 0){
         remove_node(u); // also adds to stack
@@ -451,7 +453,10 @@ bool paths_075(int u, int t){
                 if(success)
                     num_good_children++;
 
-                first_time = false;
+                // if(degree(u) < num_good_children)
+                //     cout << "It happens!" << endl; // THIS NEVER HAPPENS
+
+                // first_time = false;
                 // I need to make sure that if we are in the second condition, we de-stack and reinsert stuff
                 if(degree(u) == 0 && lampadina){ // ALTERNATIVE
                     curr_path_len--;
@@ -479,6 +484,7 @@ bool paths_075(int u, int t){
                     return true; // at least one child was good at this point
                 }
 
+                // SAME AS degree(u)>num_good_children AND LAMPADINA
                 if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
                     lampadina=false;
                     // cout << "Back to " << u << endl;
@@ -508,7 +514,6 @@ bool paths_075(int u, int t){
         // current_sol.pop_back();
         return true;
     }
-
 
 
     // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
@@ -545,7 +550,8 @@ void enumerate_paths(int s, int t){
     good_diff_len = 0;
     dead_diff_len = 0;
     dead_total_len = 0;
-    visits_performed= 0;
+    visits_performed_reach= 0;
+    visits_performed_cat = 0;
     paths_075(s,t);
     good_diff_len--; // source returned true and thus added one 
 
@@ -632,7 +638,7 @@ int main(){
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
     cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
-    cout << "Visits performed are  " << visits_performed << endl;
+    cout << "Visits performed are  " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
 
     cout << "Paths found are " <<count_paths << "; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
@@ -644,9 +650,10 @@ int main(){
     // output_file << "-----------------------------------------------------"<< endl;
     // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    // output_file << "Visits of the graph performed are  " << visits_performed << endl;
+    // output_file << "Visits of the graph performed are  " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
     // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
     // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    // output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
     // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     // output_file.close();
 

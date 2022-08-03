@@ -289,7 +289,7 @@ void find_artpts(int s, int u)
                             if(visited[neigh] && !deleted[neigh] && disc[neigh] >= disc[v]){
                                 remove_node(neigh);
                                 deleted_w_caterpillar++;
-                                cout << "[caterpillar removed " << neigh << "]" << endl;
+                                // cout << "[caterpillar removed " << neigh << "]" << endl;
                             }
                         }
                     }

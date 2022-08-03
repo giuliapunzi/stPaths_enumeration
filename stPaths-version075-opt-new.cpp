@@ -3,6 +3,8 @@
 #include <vector>
 #include <algorithm>
 #include <stack>
+#include <chrono>
+#include <cstdint>
 
 using namespace std;
 vector<int> deleted;
@@ -45,6 +47,15 @@ int print_count;
 
 long visits_performed_reach;
 long visits_performed_cat;
+
+uint64_t time_reachability;
+uint64_t time_caterpillar;
+
+
+uint64_t timeMs() {
+  using namespace std::chrono;
+  return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+}
 
 // create graph from file filename 
 // WE REMOVE SELF LOOPS
@@ -381,8 +392,11 @@ void find_caterpillar(int s, int t)
     
     parent[t] = -1;
 
-    // only interested in the ones from s to t = caterpillar
+    uint64_t start = timeMs();
+    // launch DFS from node t
+     // only interested in the ones from s to t = caterpillar
     find_artpts(t);
+    time_caterpillar += (timeMs() - start) ;
  
     // Printing the APs
     // cout << "Printing the art pts: ";
@@ -423,8 +437,10 @@ void reachability_check(int t){
             reachable[i] = 0;
     }
 
+    uint64_t start = timeMs();
     // launch DFS from node t
     DFS(t);
+    time_reachability += (timeMs() - start);
 
     // go through all nodes of the graph and deleted the ones with reachable value = 0
     // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
@@ -664,17 +680,16 @@ int main(){
 
     // printGraph();
 
+    time_reachability = 0;
+    time_caterpillar = 0;
 
-    clock_t start;
-    double duration;
-
-    start = clock();
+    uint64_t start = timeMs();
 
     // standard: s = 0, t=last node
     enumerate_paths(0, G.size()-1);
-    duration = (clock() - start) / (double) CLOCKS_PER_SEC;
+    uint64_t duration = (timeMs() - start);
 
-    cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
+    cout <<  "Elapsed time: " << duration << " ms; calls performed are " << calls_performed << endl;
     cout << "Visits performed are  " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
 
     cout << "Paths found are " <<count_paths << "; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;

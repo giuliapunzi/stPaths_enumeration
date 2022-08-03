@@ -37,13 +37,14 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-40-80.txt";
+char* input_filename = "graph-75-100.txt";
 
 bool is_edge(int u, int v);
 
 int print_count;
 long visits_performed_reach;
-long visits_performed_cat;
+long visits_performed_cat_intermediate;
+long visits_performed_cat_og;
 
 // create graph from file filename 
 // WE REMOVE SELF LOOPS
@@ -344,7 +345,7 @@ void find_caterpillar(int s, int t)
     parent.resize(G.size());
     cat_stack.erase(cat_stack.begin(), cat_stack.end());
     visit_time = 0;
-    visits_performed_cat++;
+    // visits_performed_cat++;
     current_s = s;
     last_art = -1;
 
@@ -458,6 +459,7 @@ bool paths_095(int u, int first_t, int t){
             find_caterpillar(u, t); // compute caterpillar to delete useless neighbors and recompute next target
             remove_simple(u);
             first_t = last_art;
+            visits_performed_cat_intermediate++;
             // WE NEED TO RE-STACK THESE WHEN EXITING u
         }
         bool success = true;
@@ -500,6 +502,7 @@ bool paths_095(int u, int first_t, int t){
                     find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
                     remove_simple(u);
                     first_t = last_art;
+                    visits_performed_cat_og++;
                 }
 
             }
@@ -552,7 +555,8 @@ void enumerate_paths(int s, int t){
     dead_diff_len = 0;
     dead_total_len = 0;
     visits_performed_reach= 0;
-    visits_performed_cat= 0;
+    visits_performed_cat_intermediate= 0;
+    visits_performed_cat_og = 0;
     paths_095(s, last_art, t);
     good_diff_len--; // source returned true and thus added one 
 
@@ -638,8 +642,8 @@ int main(){
     // enumerate_paths(0,6); // for small example
     duration = (clock() - start) / (double) CLOCKS_PER_SEC;
 
-    cout <<  "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
-    cout << "Visits performed are " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
+    cout << endl<< "Elapsed time: " << duration << " sec; calls performed are " << calls_performed << endl;
+    cout << "Visits performed are " << visits_performed_reach + visits_performed_cat_intermediate + visits_performed_cat_og <<"; of which " << visits_performed_reach << " from reachability, " << visits_performed_cat_og << " from og caterpillar, and " << visits_performed_cat_intermediate << " from new cat " << endl;
 
     cout << "Paths found are " <<count_paths << "; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
@@ -651,8 +655,7 @@ int main(){
     // output_file << "-----------------------------------------------------"<< endl;
     // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    // output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
-    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    // output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat_intermediate + visits_performed_cat_og <<"; of which " << visits_performed_reach << " from reachability, " << visits_performed_cat_og << " from og caterpillar, and " << visits_performed_cat_intermediate << " from new cat " << endl;    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
     // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
     // output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
     // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;

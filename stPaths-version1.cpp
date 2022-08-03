@@ -290,7 +290,7 @@ void find_artpts(int s, int u)
                         // if at this point the current source was s, this is the last art point
                         // NEED TO CHECK THAT IT IS DIFFERENT FROM S
                         // if(current_s == s && u != s)
-                        if(current_s != u){
+                        if(current_s != u ){
                             new_targets.push_back(u);
                         }
 
@@ -398,12 +398,15 @@ void find_caterpillar(int s, int t)
 
     // update the global stack of targets
     for(int j = new_targets.size()-1; j >=0; j--){
-        target_stack.push_back(new_targets[j]);
+        if(find(target_stack.begin(), target_stack.end(), new_targets[j]) == target_stack.end()) // if it is not on the stack already
+            target_stack.push_back(new_targets[j]);
 
         // also, now, after the whole visit, we can remove the 'bad neighbors'
         for(int k = 0; k < target_neighbors[new_targets[j]].size(); k++){
-            remove_node(target_neighbors[new_targets[j]][k]);
-            cout << "[caterpillar removed " << target_neighbors[new_targets[j]][k] << "]" << endl;
+            if(!deleted[target_neighbors[new_targets[j]][k]]){ // need to check if already deleted!!! they might be neighbors of two art points/of a bad and good one
+                remove_node(target_neighbors[new_targets[j]][k]);
+                cout << "[caterpillar removed " << target_neighbors[new_targets[j]][k] << "]" << endl;
+            }
         }
     }
     
@@ -573,14 +576,22 @@ bool paths_1(int u, int first_t, int t){
                 if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
                     lampadina=false;
                     
-                    cout << "Finished backtracking! About to call caterpillar from " << u << " to " << first_t << endl;
-
-                    reinsert_simple(u);
-                    find_caterpillar(u, first_t); // compute caterpillar to delete useless neighbors
-                    remove_simple(u);
-                    child_target = target_stack.back();
-                    cout << "first t becomes " << first_t << " for node " << u << endl;
-                    visits_performed_cat_og++;
+                    cout << "Finished backtracking in " << u<<endl;
+                    
+                    
+                    if(u!=first_t){ // otherwise it's useless
+                        cout << "About to call caterpillar to " << first_t << endl;
+                        cout << "Current target stack: ";
+                        for(int i = 0; i < target_stack.size(); i++)
+                            cout << target_stack[i] << " ";
+                        cout << endl;
+                        reinsert_simple(u);
+                        find_caterpillar(u, first_t); // compute caterpillar to delete useless neighbors
+                        remove_simple(u);
+                        child_target = target_stack.back();
+                        // cout << "first t becomes " << child_target << " for node " << u << endl;
+                        visits_performed_cat_og++;
+                    }
                 }
 
             }

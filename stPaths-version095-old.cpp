@@ -15,8 +15,6 @@ typedef vector<vector<int>> graph;
 graph G;
 
 vector<int> reachable; // marks nodes that have been visited by the DFS
-vector<int> bad_neigh_first_t;
-vector<int> good_neigh_first_t;
 
 // global variable used to count the number of paths
 // also count the total length of the paths up to now 
@@ -289,21 +287,15 @@ void find_artpts(int s, int u)
                         if(current_s == s && u != s)
                             last_art = u;
 
+                        current_s = u;
 
-                        // remove stuff from stack
+                        // remove stuff
                         int x = cat_stack.back();
                         while(x != v){
-                            if(current_s == s && u != s)
-                                good_neigh_first_t.push_back(x);
-
                             cat_stack.pop_back();
                             x = cat_stack.back();
                         }
                         cat_stack.pop_back(); 
-                        good_neigh_first_t.push_back(v);
-
-                        current_s = u;
-                        
                     }
                         
 
@@ -354,7 +346,6 @@ void find_caterpillar(int s, int t)
     good_art.resize(G.size());
     parent.resize(G.size());
     cat_stack.erase(cat_stack.begin(), cat_stack.end());
-    good_neigh_first_t.erase(good_neigh_first_t.begin(), good_neigh_first_t.end());
     visit_time = 0;
     // visits_performed_cat++;
     current_s = s;
@@ -369,23 +360,13 @@ void find_caterpillar(int s, int t)
     
     parent[t] = -1;
 
-    for (auto x : bad_neigh_first_t)
-        remove_simple(x);
-
     // only interested in the ones from s to t = caterpillar
     find_artpts(s,t);
 
-    for (auto x : bad_neigh_first_t)
-        reinsert_simple(x);
-
-
-    bad_neigh_first_t.erase(bad_neigh_first_t.begin(), bad_neigh_first_t.end());
-
     // if this happened, then s and t are in the same BCC
-    if (last_art== -1){
+    if (last_art== -1)
         last_art = t;
-        good_neigh_first_t = neighbors(t);
-    }
+
 }
 
 
@@ -421,14 +402,7 @@ void reachability_check(int t){
     }
 
     // launch DFS from node t
-    // DFS(t);
-
-    // launch DFS from all good neighbors of node t
-    for (int i = 0; i < good_neigh_first_t.size(); i++)
-    {
-        DFS(good_neigh_first_t[i]);
-    }
-    
+    DFS(t);
 
     // go through all nodes of the graph and deleted the ones with reachable value = 0
     // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
@@ -483,13 +457,12 @@ bool paths_095(int u, int first_t, int t){
         // this also removes nodes that are not reachable as it is an articulation point
         if(u== first_t){
             // recall to simple add u 
-            // reinsert_simple(u);
-            // find_caterpillar(u, t); // compute caterpillar to delete useless neighbors and recompute next target
-            // remove_simple(u);
-            // first_t = last_art;
-            // visits_performed_cat_intermediate++;
+            reinsert_simple(u);
+            find_caterpillar(u, t); // compute caterpillar to delete useless neighbors and recompute next target
+            remove_simple(u);
+            first_t = last_art;
+            visits_performed_cat_intermediate++;
             // WE NEED TO RE-STACK THESE WHEN EXITING u
-            first_t = t;
         }
         bool success = true;
         int num_good_children = 0;
@@ -528,7 +501,7 @@ bool paths_095(int u, int first_t, int t){
                     lampadina=false;
                     
                     reinsert_simple(u);
-                    find_caterpillar(u, first_t); // compute caterpillar to delete useless neighbors
+                    find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
                     remove_simple(u);
                     first_t = last_art;
                     visits_performed_cat_og++;

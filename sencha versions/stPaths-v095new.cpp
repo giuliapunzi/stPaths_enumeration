@@ -45,7 +45,7 @@ uint64_t  start_time;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-75-100.txt";
+char* input_filename = "graph-40-80.txt";
 
 bool is_edge(int u, int v);
 
@@ -449,7 +449,6 @@ void find_caterpillar(int s, int t)
     uint64_t start = timeMs();
      // only interested in the ones from s to t = caterpillar
     find_artpts(s, t);
-    
 
     for (auto x : bad_neigh_first_t)
         reinsert_simple(x);
@@ -504,8 +503,8 @@ void find_caterpillar(int s, int t)
     // for(auto x : bad_neigh_first_t)
     //     cout << x << " ";
     // cout << endl;  
-
-    time_caterpillar += (timeMs() - start) ;
+    
+    time_caterpillar += (timeMs() - start);
 }
 
 
@@ -639,10 +638,19 @@ bool paths_095(int u, int first_t, int t){
         // we also need to keep copies of what the good/bad neighbors were to reconstitute them
         vector<int> old_bad_neigh = bad_neigh_first_t;
         vector<int> old_good_neigh = good_neigh_first_t;
+
         if(u== first_t){ // move directly to t
-            first_t = t;
+            // first_t = t;
+            
             bad_neigh_first_t.erase(bad_neigh_first_t.begin(), bad_neigh_first_t.end());
             good_neigh_first_t = neighbors(t);
+            
+            // THESE FOLLOWING LINES ARE AN ALTERNATIVE TO THE FIRST ONE
+            reinsert_simple(u);
+            find_caterpillar(u, t); // compute caterpillar to delete useless neighbors and recompute next target
+            remove_simple(u);
+            first_t = last_art;
+            visits_performed_cat_intermediate++;
         }
 
         bool success = true;

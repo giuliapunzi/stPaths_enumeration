@@ -6,3 +6,27 @@ Dead ends are 1714614 for a total length of 6858404
 -----------------------------------------------------
 
 
+-----------------------------------------------------
+Output for graph with 3892 nodes, 17217 edges and max degree 126 (tvshows.txt)
+1000000 calls performed in 15.2756 secs (MAX_CALLS = 1000000)
+Paths found are 48774 for a total length of 67753168
+Dead ends are 171437 for a total length of 684955
+-----------------------------------------------------
+
+
+-----------------------------------------------------
+Output for graph with 3892 nodes, 17217 edges and max degree 126 (tvshows.txt)
+5000000 calls performed in 78.4487 secs (MAX_CALLS = 5000000)
+Paths found are 244247 for a total length of 339320888
+Dead ends are 853520 for a total length of 3434759
+-----------------------------------------------------
+
+
+-----------------------------------------------------
+Output for graph with 7057 nodes, 89368 edges and max degree 674 (government.txt)
+1000000 calls performed in 6.60531 secs (MAX_CALLS = 1000000)
+Paths found are 141490 for a total length of 641598485
+Dead ends are 295690 for a total length of 379388
+-----------------------------------------------------
+
+

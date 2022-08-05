@@ -36,6 +36,10 @@ int main(){
     cout << endl << "Insert name of destination file: ";
     cin >> outname;
 
+    // N = 15;
+    // M = 30;
+    // outname = "graph-15-30.txt";
+
     create_sparse(N,M);
 
     return 0;

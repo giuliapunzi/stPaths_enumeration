@@ -45,7 +45,7 @@ uint64_t  start_time;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "graph-20-40.txt";
+char* input_filename = "graph-75-100.txt";
 
 bool is_edge(int u, int v);
 
@@ -234,32 +234,39 @@ vector<bool> is_art;
 vector<bool> good_art;
 vector<int> parent; 
 vector<int> cat_stack;
+vector<int> root_correct_neigh;
 int visit_time;
 int current_s;
 int last_art;
+bool found_s;
 
 void find_artpts(int s, int u)
 {
+    // cout << "Inserting "<< u << " in cat stack"<< endl;
     cat_stack.push_back(u);
     // Count of children in DFS Tree
     int children = 0;
  
     // Mark the current node as visited
     visited[u] = true;
+
+    if(u== s)
+        found_s = true;
  
     // Initialize discovery time and low value
     disc[u] = low[u] = ++visit_time;
     
-    int root_correct_neigh = -1;
     bool root_found = false; // becomes true when the root finds s
     bool good_for_current_BCC;    
 
     // Go through all non-deleted neighbors of u
     for (auto v : G[u]) {
+        // cout <<v << " is a neighbor of " << u << endl;
         if(!deleted[v]){
             // If v is not visited yet, then make it a child of u
             // in DFS tree and recur for it
             if (!visited[v]) {
+                // cout <<v << " is not deleted and not visited! About to recur "<<endl;
                 good_for_current_BCC = false;
                 parent[v] = u;
                 children++;
@@ -267,8 +274,36 @@ void find_artpts(int s, int u)
 
                 // if we are the root and we just found s, v is the only good neighbor
                 if(parent[u] == -1){
-                    if(!root_found){ 
-                        root_correct_neigh = v; 
+                    if(!root_found && found_s){ // the nodes in the stack right now are the 'correct BCC' for t
+                        root_correct_neigh.push_back(v);
+                        // cout <<"Just found correct bcc for target: with neighbor "<< v << endl;
+                        
+                        // cout<< "Current BCC stack: ";
+                        // for(int i= 0; i< cat_stack.size(); i++)
+                        //     cout << cat_stack[i] << " " ;
+                        // cout << endl;
+
+                        // cout << "neighbors of t : ";
+                        // for (auto nn : neighbors(u))
+                        // {
+                        //     cout << nn << " ";
+                        // }
+                        // cout << endl;
+                        
+
+                        // it could  be the second BCC for t so we need to unstack until v
+                        int ind = cat_stack.size() -1;
+                        while(cat_stack[ind] != v)
+                        {   
+                            // cout << "considering element of stack " << cat_stack[ind] << endl;
+                            // if the element of the stack is a neighbor of t 
+                            if (find(G[u].begin(), G[u].end(), cat_stack[ind])!= G[u].end()){
+                                root_correct_neigh.push_back(cat_stack[ind]);
+                                // cout <<"Found "<< cat_stack[ind] << " to be a neighbor of target" << endl;
+                            }  
+                            ind--;
+                        }
+
                         root_found = true;
                     }
                 }
@@ -281,6 +316,7 @@ void find_artpts(int s, int u)
                 // its child is more than discovery value of u.
                 if (parent[u] != -1 && low[v] >= disc[u]){ // here is where I close my articulation point
                     is_art[u] = true;
+                    // cout <<u << " is an art point because of child " << v << endl;
                     
                     int check = cat_stack.size()-1;
                     // first, find out if good for current BCC by scanning only the current BCC
@@ -299,28 +335,35 @@ void find_artpts(int s, int u)
                     // NEW: SET THE CURRENT ART POINT AS S!
                     if(good_for_current_BCC){
                         good_art[u] = true;
-                        // cout << u << " is a good art point" << endl;
+                        // cout <<u << " is a good art point with child " << v << endl;
                         // if at this point the current source was s, this is the last art point
                         // NEED TO CHECK THAT IT IS DIFFERENT FROM S
-                        if(current_s == s && u != s)
+                        if(current_s == s && u != s){
                             last_art = u;
+                            good_neigh_first_t.push_back(v);
+                        }
 
                         // remove stuff from stack
                         int x = cat_stack.back();
                         while(x != v){ // If we are in the "right" BCC and the node is a neighbor of u, add it to good neighbors
-                            // cout << "Removing " << x << " from cat stack "<< endl;
+                            // cout <<"Removing " << x << " from cat stack "<< endl;
                             
                             if(current_s == s && u != s && find(G[u].begin(), G[u].end(), x) != G[u].end()){
                                 good_neigh_first_t.push_back(x);
-                                // cout << " And adding it to good neighbors" << endl;
+                                // cout <<" And adding it to good neighbors" << endl;
                             }
 
                             cat_stack.pop_back();
                             x = cat_stack.back();
                         }
                         cat_stack.pop_back(); 
-                        if(current_s == s && u != s)
-                            good_neigh_first_t.push_back(v);
+                        // cout <<"Removing " << x << " from cat stack "<< endl;
+
+
+                        // cout<< "Current BCC stack: ";
+                        // for(int i= 0; i< cat_stack.size(); i++)
+                        //     cout << cat_stack[i] << " " ;
+                        // cout << endl;
 
                         if(find(G[u].begin(), G[u].end(), v) == G[u].end())
                             throw logic_error("v should be a neighbor of u!!!");
@@ -331,6 +374,7 @@ void find_artpts(int s, int u)
 
                     if(!good_for_current_BCC){ // if I am not good, I need to delete my neighbors that have discovery time greater than v
                         // remove stuff and delete
+                        // cout <<"Found a bad art point; destack and delete "<< endl;
                         int x = cat_stack.back();
                         while(x != v){
                             cat_stack.pop_back();
@@ -343,6 +387,10 @@ void find_artpts(int s, int u)
                         remove_node(x);
                         deleted_w_caterpillar++;
                         // cout << "[caterpillar removed " << x << "]" << endl;
+                        // cout<< "Current BCC stack: ";
+                        // for(int i= 0; i< cat_stack.size(); i++)
+                        //     cout << cat_stack[i] << " " ;
+                        // cout << endl;
                     }
                 }
             }
@@ -358,10 +406,8 @@ void find_artpts(int s, int u)
     if (parent[u] == -1 && children > 1){
         is_art[u] = true;
         good_art[u] = true; // root is always good
-
     }
-
-    
+        
 }
 
 // start visit for finding articulation points from t
@@ -375,7 +421,9 @@ void find_caterpillar(int s, int t)
     parent.resize(G.size());
     cat_stack.erase(cat_stack.begin(), cat_stack.end());
     good_neigh_first_t.erase(good_neigh_first_t.begin(), good_neigh_first_t.end());
+    root_correct_neigh.erase(root_correct_neigh.begin(), root_correct_neigh.end());
     visit_time = 0;
+    found_s = false;
     // visits_performed_cat++;
     current_s = s;
     last_art = -1;
@@ -392,9 +440,12 @@ void find_caterpillar(int s, int t)
     // cout << "About to find art points from "<< s << " to "<< t;
     // printGraph();
 
-    for (auto x : bad_neigh_first_t)
+    for (auto x : bad_neigh_first_t){
         remove_simple(x);
+        // cout <<"removing bad neighbor " << x << " of " << t; 
+        }
 
+    // printGraph();
     uint64_t start = timeMs();
      // only interested in the ones from s to t = caterpillar
     find_artpts(s, t);
@@ -406,18 +457,40 @@ void find_caterpillar(int s, int t)
     bad_neigh_first_t.erase(bad_neigh_first_t.begin(), bad_neigh_first_t.end());
 
 
+    // cout<< "BCC stack at the end: ";
+    // for(int i= 0; i< cat_stack.size(); i++)
+    //     cout << cat_stack[i] << " " ;
+    // cout << endl;
+
+
+    // SET UP BAD NEIGHBORS 
+
     // if this happened, then s and t are in the same BCC
     if (last_art== -1){
         last_art = t;
-        good_neigh_first_t = neighbors(t);
+        good_neigh_first_t = root_correct_neigh;
     }
 
-    for (auto x : G[last_art])
-    {   
+    // cout <<"Before setting bad neighbors: "<< endl;
+    // cout<< "Good neighbors of last art "<< last_art <<": ";
+    // for(int i= 0; i< good_neigh_first_t.size(); i++)
+    //     cout << good_neigh_first_t[i] << " " ;
+    // cout << endl;
+
+    for (auto x : G[last_art]){   
+        // cout << "considering neighbor " << x << " of last art "<< last_art << endl;
         // if it is not deleted and it does not appear in the good neighbors, it is a bad neighbor
-        if(!deleted[x] && find(good_neigh_first_t.begin(),good_neigh_first_t.end(),x) == good_neigh_first_t.end())
+        if(!deleted[x] && find(good_neigh_first_t.begin(),good_neigh_first_t.end(),x) == good_neigh_first_t.end()){
             bad_neigh_first_t.push_back(x);
+            // cout << "It is a bad neighbor!"<<endl;
+        }
     }
+
+    // cout<< "Bad neighbors of last art "<< last_art <<": ";
+    // for(int i= 0; i< bad_neigh_first_t.size(); i++)
+    //     cout << bad_neigh_first_t[i] << " " ;
+    // cout << endl;
+    
 
     // cout << "Current last art: " << last_art<< endl;
     // printGraph();
@@ -430,8 +503,7 @@ void find_caterpillar(int s, int t)
     // cout << "bad neighbors are "; 
     // for(auto x : bad_neigh_first_t)
     //     cout << x << " ";
-    // cout << endl; 
-    
+    // cout << endl;  
 }
 
 
@@ -475,6 +547,7 @@ void reachability_check(int t){
     //     if(reachable[i])
     //         cout << i << " ";
     // cout << endl;
+
 
     // launch DFS from node t after having removed its bad neighbors
     for(auto x: bad_neigh_first_t)
@@ -553,24 +626,26 @@ bool paths_095(int u, int first_t, int t){
         return true;
     }
 
-    if(u== first_t){ // move directly to t
-        first_t = t;
-        bad_neigh_first_t.erase(bad_neigh_first_t.begin(), bad_neigh_first_t.end());
-        good_neigh_first_t = neighbors(t);
-    }
+    
     // cout << "Current node "<< u << endl;
 
     // we have non-deleted neighbors to explore
     if(degree(u) > 0){
         remove_node(u); // also adds to stack
-        // if we get to the intermediate target, we perform another visit to set the next first_t
-        // this also removes nodes that are not reachable as it is an articulation point
+        // if we get to the intermediate target, we update the target to t
+        // we also need to keep copies of what the good/bad neighbors were to reconstitute them
+        vector<int> old_bad_neigh = bad_neigh_first_t;
+        vector<int> old_good_neigh = good_neigh_first_t;
+        if(u== first_t){ // move directly to t
+            first_t = t;
+            bad_neigh_first_t.erase(bad_neigh_first_t.begin(), bad_neigh_first_t.end());
+            good_neigh_first_t = neighbors(t);
+        }
 
         bool success = true;
         int num_good_children = 0;
         for(auto v: G[u]){ 
             if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
-                
                 success = paths_095(v, first_t, t);
 
                 if(success)
@@ -578,10 +653,12 @@ bool paths_095(int u, int first_t, int t){
 
                 // I need to make sure that if we are in the second condition, we de-stack and reinsert stuff
                 if(degree(u) == 0 && lampadina){ // ALTERNATIVE
-                    // cout << "Backtracking"<<endl;
+                    // cout <<"Backtracking"<<endl;
                     curr_path_len--;
                     dead_diff_len++;
                     // current_sol.pop_back();
+                    // bad_neigh_first_t = old_bad_neigh;
+                    // good_neigh_first_t = old_good_neigh;
                     return false; // return at first failing neighbor
                 }
 
@@ -589,7 +666,7 @@ bool paths_095(int u, int first_t, int t){
                 if(degree(u) == num_good_children && lampadina){ // NOTE: Degree is now > 0
                     // rimettere le cose a posto       
                     // pop stack until u (included) and mark as not deleted
-                    // cout << "Backtracking (no more good children)"<<endl;
+                    // cout <<"Backtracking (no more good children)"<<endl;
                     while(del_stack.top() != u){
                         reinsert_node();
                     }
@@ -597,16 +674,21 @@ bool paths_095(int u, int first_t, int t){
 
                     curr_path_len--;
                     good_diff_len++;
+
+                    bad_neigh_first_t = old_bad_neigh;
+                    good_neigh_first_t = old_good_neigh;
+
                     // current_sol.pop_back();
                     return true; // at least one child was good at this point
                 }
 
                 // SAME AS degree(u)>num_good_children AND LAMPADINA
                 if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
-                    // cout << "We are at articulation point; ";
+                    // cout <<"We are at articulation point; ";
                     lampadina=false;
 
-                    // cout << "about to call caterpillar from "<< u << " to " << first_t << endl;
+
+                    // cout <<"about to call caterpillar from "<< u << " to " << first_t << endl;
                     
                     reinsert_simple(u);
                     // printGraph();
@@ -630,12 +712,17 @@ bool paths_095(int u, int first_t, int t){
         good_diff_len++;
         // current_sol.pop_back();
 
+        // reconstitute neighbors and art point for parent call
+        bad_neigh_first_t = old_bad_neigh;
+        good_neigh_first_t = old_good_neigh;
+
         return true;
     }
 
     // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
     if(lampadina){
-        // cout << "Backtracking"<<endl;
+        
+        // cout <<"Backtracking"<<endl;
         curr_path_len--;
         dead_diff_len++;
         // current_sol.pop_back();
@@ -645,7 +732,7 @@ bool paths_095(int u, int first_t, int t){
 
     // here we are just arriving in a node of degree zero
     // VISITA: marca cancellati i nodi non raggiungibili da t + vettore reachable
-    // cout << "Reached a dead end in "<< u<<endl;
+    // cout <<"Reached a dead end in "<< u<<endl;
     // printGraph();
     reachability_check(first_t);
     // accendo la lampadina
@@ -750,14 +837,21 @@ int main(){
     //     cout << deleted[i] << " " ;
     // cout << endl;
 
+    // cout<< "Bad neighbors of t: ";
+    // for(int i= 0; i< bad_neigh_first_t.size(); i++)
+    //     cout << bad_neigh_first_t[i] << " " ;
+    // cout << endl;
 
-    printGraph();
+
+    // printGraph();
 
     time_reachability = 0;
     time_caterpillar = 0;
 
     cout << "Insert max time in milliseconds: ";
     cin >> MAX_TIME;
+
+    // MAX_TIME= 1000000;
 
     start_time = timeMs();
 

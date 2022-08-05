@@ -9,7 +9,7 @@ vector<int> deleted;
 vector<int> current_degree; // keep global degree vector, updating it as deletions and insertions go
 
 stack<int> del_stack; // stack of nodes that have been deleted
-// vector<int> current_sol;
+vector<int> current_sol;
 
 typedef vector<vector<int>> graph;
 graph G;
@@ -37,7 +37,7 @@ bool lampadina;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "visit-comma.txt";
+char* input_filename = "graph-20-40.txt";
 
 bool is_edge(int u, int v);
 
@@ -282,6 +282,7 @@ void find_artpts(int s, int u)
                     // NEW: SET THE CURRENT ART POINT AS S!
                     if(good_for_current_BCC){
                         good_art[u] = true;
+                        // cout << u << " is a good art point with child " << v << endl;
                         // if at this point the current source was s, this is the last art point
                         // NEED TO CHECK THAT IT IS DIFFERENT FROM S
                         if(current_s == s && u != s)
@@ -292,10 +293,17 @@ void find_artpts(int s, int u)
                         // remove stuff
                         int x = cat_stack.back();
                         while(x != v){
+                            // cout << "Removing " << x << " from cat stack "<< endl;
                             cat_stack.pop_back();
                             x = cat_stack.back();
                         }
                         cat_stack.pop_back(); 
+                        // cout << "Removing " << x << " from cat stack "<< endl;
+
+                        // cout<< "Current BCC stack: ";
+                        // for(int i= 0; i< cat_stack.size(); i++)
+                        //     cout << cat_stack[i] << " " ;
+                        // cout << endl;
                     }
                         
 
@@ -303,6 +311,7 @@ void find_artpts(int s, int u)
                     // DIFFERENCE WITH 075OPT: HERE WE REMOVE ENTIRE BCC, NOT ONLY NEIGHBORS OF U
                     if(!good_for_current_BCC){ // if I am not good, I need to delete my neighbors that have discovery time greater than v
                         // remove stuff and delete
+                        // cout << "Found a bad art point; destack and delete "<< endl;
                         int x = cat_stack.back();
                         while(x != v){
                             cat_stack.pop_back();
@@ -315,6 +324,10 @@ void find_artpts(int s, int u)
                         remove_node(x);
                         deleted_w_caterpillar++;
                         // cout << "[caterpillar removed " << x << "]" << endl;
+                        // cout<< "Current BCC stack: ";
+                        // for(int i= 0; i< cat_stack.size(); i++)
+                        //     cout << cat_stack[i] << " " ;
+                        // cout << endl;
                     }
                 }
             }
@@ -426,7 +439,7 @@ void reachability_check(int t){
 // paths must return the status, either success or fail
 // we do so by returning true/false: true = success
 bool paths_095(int u, int first_t, int t){
-    // current_sol.push_back(u);
+    current_sol.push_back(u);
     calls_performed++;
     curr_path_len++;
 
@@ -440,15 +453,16 @@ bool paths_095(int u, int first_t, int t){
         curr_path_len--;
         good_diff_len++;
 
-        // cout << "Sol ";
-        // for(auto x : current_sol)
-        //     cout << x << " ";
-        // cout << endl;
+        cout << "Sol ";
+        for(auto x : current_sol)
+            cout << x << " ";
+        cout << endl;
 
-        // current_sol.pop_back();
+        current_sol.pop_back();
         return true;
     }
 
+    // cout << "current node " << u << endl;
     
     // we have non-deleted neighbors to explore
     if(degree(u) > 0){
@@ -468,6 +482,15 @@ bool paths_095(int u, int first_t, int t){
         int num_good_children = 0;
         for(auto v: G[u]){ 
             if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
+                if(u == 9){
+                    cout << "we are in 9, calling for child " << v << endl;
+                    cout << "Children of 9 left: ";
+                    for(auto x: G[9])
+                        if(!deleted[x])
+                            cout << x << " ";
+                    cout << endl;
+                }
+                
                 success = paths_095(v, first_t, t);
 
                 if(success)
@@ -475,16 +498,22 @@ bool paths_095(int u, int first_t, int t){
 
                 // I need to make sure that if we are in the second condition, we de-stack and reinsert stuff
                 if(degree(u) == 0 && lampadina){ // ALTERNATIVE
+                    if(u == 9)
+                        cout << "Backtracking from 9"<< endl;
+                    // cout << "Backtracking"<<endl;
                     curr_path_len--;
                     dead_diff_len++;
-                    // current_sol.pop_back();
+                    current_sol.pop_back();
                     return false; // return at first failing neighbor
                 }
 
                 // here we can go back, but re-inserting deleted nodes
                 if(degree(u) == num_good_children && lampadina){ // NOTE: Degree is now > 0
+                    if(u == 9)
+                        cout << "Backtracking from 9 because we finished its children"<< endl;
                     // rimettere le cose a posto       
                     // pop stack until u (included) and mark as not deleted
+                    // cout << "Backtracking (no more good children)"<<endl;
                     while(del_stack.top() != u){
                         reinsert_node();
                     }
@@ -492,14 +521,18 @@ bool paths_095(int u, int first_t, int t){
 
                     curr_path_len--;
                     good_diff_len++;
-                    // current_sol.pop_back();
+                    current_sol.pop_back();
                     return true; // at least one child was good at this point
                 }
 
                 // SAME AS degree(u)>num_good_children AND LAMPADINA
                 if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
                     lampadina=false;
-                    
+                    // cout << "We are at an articulation point; ";
+                    // cout << "about to call caterpillar from "<< u << " to " << t << endl;
+                    if(u == 9)
+                        cout << "Finished backtracking in 9"<< endl;
+
                     reinsert_simple(u);
                     find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
                     remove_simple(u);
@@ -519,22 +552,30 @@ bool paths_095(int u, int first_t, int t){
 
         curr_path_len--;
         good_diff_len++;
-        // current_sol.pop_back();
+        current_sol.pop_back();
 
         return true;
     }
 
     // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
     if(lampadina){
+        if(u == 9)
+            cout << "9 has degree zero, backtracking"<< endl;
+
+        // cout << "Backtracking"<<endl;
         curr_path_len--;
         dead_diff_len++;
-        // current_sol.pop_back();
+        current_sol.pop_back();
         return false;
     }
 
 
+    // cout << "Reached a dead end in "<< u<<endl;
     // here we are just arriving in a node of degree zero
     // VISITA: marca cancellati i nodi non raggiungibili da t + vettore reachable
+    if(u == 9)
+        cout << "reached dead end in 9"<< endl;
+    
     reachability_check(first_t);
     // accendo la lampadina
     lampadina = true;
@@ -543,7 +584,7 @@ bool paths_095(int u, int first_t, int t){
     dead_total_len+=curr_path_len;
     dead_diff_len++;
     curr_path_len--;
-    // current_sol.pop_back(); 
+    current_sol.pop_back(); 
     return false;
 }
 

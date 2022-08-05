@@ -13,7 +13,7 @@ vector<int> current_degree; // keep global degree vector, updating it as deletio
 vector<bool> visited; // for the DFS
 // vector<bool> good_neighbor; // support vector to identify good neighbors of a node during recursive call
 
-char* input_filename = "tvshows.txt";
+char* input_filename = "test3.txt";
 
 int visits_performed;
 
@@ -185,8 +185,12 @@ void DFS(int u){
 
 // starts a visit from t; we don't need to mark the neighbors
 // as they will simply be the visited non deleted nodes.
-void check_neighbors(int u, int t){
+vector<bool> check_neighbors(int u, int t){
     visits_performed++;
+
+    // DELETION OF S PERFORMED BEFORE CALL TO FUNCTION
+    // before starting, mark s as deleted
+    // deleted[s] = 1;
 
     // initialize all deleted nodes as visited
     for(int i = 0; i< visited.size(); i++){
@@ -196,10 +200,26 @@ void check_neighbors(int u, int t){
             visited[i] = false;
     }
 
+    // for(auto x : visited)
+    //     cout << x << " " << flush;
+    // cout << endl;
+
     // launch DFS from node t
     DFS(t);
 
-    return;
+    // vector<int> neigh = neighbors(s);
+    // find out which neighbors of s have been visited, and output them
+    vector<bool> good_neighbors(G[u].size());
+    for(int i = 0; i < good_neighbors.size(); i++){
+        if(visited[G[u][i]] && !deleted[G[u][i]])
+            good_neighbors[i] = true;
+            // good_neighbors.push_back(G[s][i]);
+        else
+            good_neighbors[i] = false;
+            
+    }
+
+    return good_neighbors;
 }
 
 
@@ -238,43 +258,32 @@ bool paths_0(int u, int t){
         remove_node(u);
         // cout << "u="<< u << " has non-deleted neighbors" << endl;
         bool neigh_success = false; 
-
-        // // mark the neighbors of u as all good
-        // for (auto v : G[u])
-        //     good_neighbor[v] = true; // NOTE: we could only mark non-deleted ones, but we still need to check deleted in the for loop, as they dynamically change
-
-        // EVERY RECURSIVE CALL MUST NECESSARILY KEEP ITS OWN GOOD NEIGHBORS' VECTOR AS GLOBALLY THEY CHANGE IN SUCCESSIVE REC CALLS
-        vector<bool> good_neighbor(G[u].size());
-        for(int i =0 ; i < G[u].size(); i++){
-            if(deleted[G[u][i]])
-                good_neighbor[i] = false;
-            else
-                good_neighbor[i] = true;
-        }
+        vector<bool> good_neighbors;
+        bool is_good = true;
 
         for(int i =0 ; i < G[u].size(); i++){ 
-            if(good_neighbor[i]){ // we take the next good (automatically non-deleted) element of G[u], noting that these deleted elements dynamically change during the for loop
+            if(!deleted[G[u][i]] && is_good){ // we take the next good non-deleted element of G[u]
                 neigh_success = paths_0(G[u][i], t); // G[u][i] is the current neighbor, while i is its index in the neighbors'array
                 ret_value = neigh_success || ret_value; // if neighbor returns true, we don't have to do anything else
                 // if a neighbor returned false, we need to perform a visit (which will also delete other neighbors of u)
                 if(!neigh_success && lampadina){ // if we found a failing neighbor and we have lampadina
                     // cout << "First failing neighbor for u=" <<u << " is v=" << G[u][i] << endl;
-                    check_neighbors(u, t); // this DOES NOT mark neighbors as good/bad
+                    good_neighbors = check_neighbors(u, t); // this marks neighbors as good/bad
                     // mark as good neighbors only the non-deleted visited ones
-                    for (int j = 0; j<G[u].size(); j++){  // v :G[u])
-                        if(!visited[G[u][j]]) 
-                            good_neighbor[j] = false;
-                    }
                     // cout << "Good neighbors after visit: ";
                     // for (int j = 0; j<G[u].size(); j++){
-                    //     if(good_neighbor[j])
+                    //     if(good_neighbors[j])
                     //         cout << G[u][j] << " ";
                     // }
-                    // cout << endl;
+                    // cout << endl; 
                     lampadina = false; // visit will never be performed again for u
                 }
             }
-            
+            if(!lampadina && i < G[u].size()-1){ //we need to update the good neighbor variable
+                // cout << "i = "<< i<< " and G[u][i+1]=" << G[u][i+1] << endl;
+                is_good = good_neighbors[i+1];
+                // cout << "Update is_good to " << is_good << endl;
+            }
         }
 
         reinsert_node(u);
@@ -356,16 +365,16 @@ int main(){
     cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
     // reporting to file
-    ofstream output_file; 
-    output_file.open("output-v0-optimized.txt", ios::app);
-    output_file << "-----------------------------------------------------"<< endl;
-    output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    output_file  << "Visits performed are  " << visits_performed << endl;
-    output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    output_file.close();
+    // ofstream output_file; 
+    // output_file.open("output-v0-optimized.txt", ios::app);
+    // output_file << "-----------------------------------------------------"<< endl;
+    // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    // output_file << calls_performed << " calls performed in " << duration << " secs (MAX_CALLS = " << MAX_CALLS << ")" << endl;
+    // output_file  << "Visits performed are  " << visits_performed << endl;
+    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    // output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    // output_file.close();
 
     return 0;
 }

@@ -761,6 +761,13 @@ bool paths_1(int u, int t){
             //     if(!deleted[x])
             //         remove_node(x);
             // }   
+
+
+            // recompute caterpillar! 
+            // printGraph();
+            reinsert_simple(u);
+            find_caterpillar(u, target_stack.back()); // compute caterpillar to delete useless neighbors
+            remove_simple(u);
         }
 
         // int target_size = target_stack.size();

@@ -885,7 +885,8 @@ int main(){
     // output_file << "-----------------------------------------------------"<< endl;
     // output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     // output_file << calls_performed << " calls performed in " << duration << " ms (MAX_CALLS = " << MAX_CALLS << ")" << endl;
-    // output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat_intermediate + visits_performed_cat_og <<"; of which " << visits_performed_reach << " from reachability, " << visits_performed_cat_og << " from og caterpillar, and " << visits_performed_cat_intermediate << " from new cat " << endl;    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    // output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat_intermediate + visits_performed_cat_og <<"; of which " << visits_performed_reach << " from reachability, " << visits_performed_cat_og << " from og caterpillar, and " << visits_performed_cat_intermediate << " from new cat " << endl;    
+    // output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
     // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
     // output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
     // output_file << "Time spent in reachability visits is "<< time_reachability << "; time spent in caterpillar visits is " << time_caterpillar<< endl;

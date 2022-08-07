@@ -34,14 +34,14 @@ long dead_diff_len; // edges only belonging to dead ends; increase by 1 every ti
 // constant which limits the number of function calls
 // plus global variable that takes into account the number of calls performed
 const long MAX_CALLS = 5000000000;
-const long MAX_TIME = 60000; 
+const long MAX_TIME = 600000; 
 int calls_performed;
 bool lampadina;
 uint64_t start_time;
 
 long long deleted_w_caterpillar;
 
-char* input_filename = "tvshows.txt";
+char* input_filename = "graph-40-80.txt";
 
 uint64_t time_reachability;
 uint64_t time_caterpillar;

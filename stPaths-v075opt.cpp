@@ -105,7 +105,57 @@ void create_graph(char* filename)
     fclose(input_graph);
     return;
 }
- 
+
+// create graph from file filename 
+// WE REMOVE SELF LOOPS
+void create_graph_old(char* filename)
+{
+    FILE* input_graph = fopen(filename, "r");
+    // input_graph.open(filename);
+    
+    int N, M;
+
+    // file contains number of nodes, number of edges at fist line
+    // and then one edge per line
+    // input_graph >> N >> M;
+    fscanf(input_graph, "%d %d", &N, &M);
+
+    int real_edges = 0;
+
+    G.resize(N);
+    deleted.resize(N);
+    current_degree.resize(N, 0);
+    reachable.resize(N, 1);
+
+    // initialize reachable vector to be all 1 and degree to be zero
+    for(int i = 0; i < G.size() ; i++){
+        reachable[i] = 1;
+        current_degree[i] = 0;
+    }
+        
+
+    int u, v;
+    for(int i=0; i<M; i++)
+    {
+        fscanf(input_graph, "%d,%d", &u, &v);
+        // input_graph >> u >> v;
+        // make sure no self-loops or multiedges are created 
+        if (u != v && !is_edge(u,v)){
+            G[u].push_back(v);
+            G[v].push_back(u);
+            real_edges++;
+            current_degree[u]++;
+            current_degree[v]++;
+        }
+        
+    }
+
+    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+
+
+    fclose(input_graph);
+    return;
+}
 
 
 // ++++++++++++++++++++++++++++++++++ GRAPH REPORTING ++++++++++++++++++++++++++++++++
@@ -555,7 +605,8 @@ int main(int argc, char* argv[]){
     }
 
     char * input_filename = argv[1];
-    create_graph(input_filename); // initialize 
+    // create_graph(input_filename); // initialize 
+    create_graph_old(input_filename);
 
     int s  = 0;
     int t = G.size() -1;
@@ -611,9 +662,11 @@ int main(int argc, char* argv[]){
     time_reachability = 0;
     time_caterpillar = 0;
 
-    cout << "Insert max time (ms): ";
+    cout << "Insert max time (s): ";
     cin >> MAX_TIME;
 
+    MAX_TIME = MAX_TIME*1000;
+    
     char foutput;
     cout << "Want file output? (y/n) ";
     cin >> foutput;

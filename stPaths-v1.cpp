@@ -756,11 +756,11 @@ bool paths_1(int u, int t){
             //     cout << x << " ";
             // cout << endl;
 
-            // Maybe remove good neighbors?
-            // for (auto x: old_good_neigh){
-            //     if(!deleted[x])
-            //         remove_node(x);
-            // }   
+            // ADDED REMOVAL OF GOOD NEIGHBORS
+            for (auto x: target_neigh_at_start_call.back()){
+                if(!deleted[x])
+                    remove_node(x);
+            }   
         }
 
         // int target_size = target_stack.size();
@@ -803,7 +803,7 @@ bool paths_1(int u, int t){
 
                     // if(u== target_stack_at_start_call.back()){
                     //     target_good_neighbors.push_back(target_neigh_at_start_call.back());
-                    //     target_stack.push_back(target_stack_at_start_call.back());
+                    //     target_stack.push_back(target_stack_at_start_call.back()); 
                     // }
 
                     target_stack = target_stack_at_start_call;

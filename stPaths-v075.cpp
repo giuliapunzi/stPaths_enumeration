@@ -620,7 +620,7 @@ int main(int argc, char* argv[]){
     }
 
     char * input_filename = argv[1];
-    create_graph_old(input_filename); // initialize 
+    create_graph(input_filename); // initialize 
     // create_graph_old(input_filename);
 
 

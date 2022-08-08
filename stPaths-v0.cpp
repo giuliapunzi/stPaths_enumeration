@@ -29,6 +29,7 @@ unsigned long dead_diff_len; // edges only belonging to dead ends; increase by 1
 
 long MAX_TIME; 
 unsigned long calls_performed;
+unsigned long visits_performed;
 uint64_t start_time;
 
 
@@ -262,7 +263,6 @@ void DFS(int u){
     return;
 }
 
-int visits_performed;
 
 // starts a visit from t, and marks as good neighbors the neighbors of s that
 // are reached through the visit. Outputs the vector of these good neighbors.
@@ -353,29 +353,35 @@ bool paths_0(int u, int t){
 
     bool neigh_value = true;
     bool ret_value = false;
-    bool sofar_good = false;
+    bool sofar_good = true;
     // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
     int i = 0;
+    vector<int> good_neigh;
 
-    for (auto v : G[u]){
-        if(!deleted[v]){
-            if(sofar_good){
-                neigh_value = paths_0(v, t);
-                ret_value = ret_value || neigh_value;
-                sofar_good = neigh_value; // true at first failing neighbor
+    for(i = 0; i < G[u].size(); i++){
+        int v = G[u][i];
+        if(!deleted[v] && sofar_good){
+            neigh_value = paths_0(v, t);
+            ret_value = ret_value || neigh_value;
+            sofar_good = neigh_value; // false at first failing neighbor
 
-                if(!sofar_good)
-                    check_neighbors(u, t);
-            }
-            else{
-                if(reachable[v]){
-                    neigh_value = paths_0(v, t);
-                    ret_value = ret_value || neigh_value;
+            if(!sofar_good){
+                check_neighbors(u, t);
+
+                // need to store the good neighbors right away as next recursive calls might overwrite them
+                for(int j = i+1; j < G[u].size(); j++){
+                    if(!deleted[G[u][j]] && reachable[G[u][j]])
+                        good_neigh.push_back(G[u][j]);
                 }
             }
         }
     }
     
+    // the ones left are sure to not fail
+    for(auto v : good_neigh){
+        neigh_value = paths_0(v, t);
+        ret_value = ret_value || neigh_value;            
+    }
     
     reinsert_node(u);
 

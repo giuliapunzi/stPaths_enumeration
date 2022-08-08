@@ -331,7 +331,26 @@ int main(int argc, char* argv[]){
     char * input_filename = argv[1];
     create_graph(input_filename); // initialize 
 
-    
+    int s  = 0;
+    int t = G.size() -1;
+
+    // initialize all nodes as non-reachable
+    for(int i = 0; i< reachable.size(); i++)
+            reachable[i] = 0;
+
+    // chech reachability of s from t
+    DFS(t);
+
+    if(!reachable[s]){
+        cout << "Node s not reachable from t" << endl;
+        return 1;
+    }
+
+    // mark as deleted the non-reachable nodes
+    for(int i =0;i < G.size();i++){
+        if(!reachable[i])
+            deleted[i]= 1;
+    }
 
     // find max degree of graph
     int maxdeg = 0;
@@ -355,37 +374,10 @@ int main(int argc, char* argv[]){
 
     cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    int s , t;
-
-    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    cin >> s;
-    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    cin >> t;
-
-    // initialize all nodes as non-reachable
-    for(int i = 0; i< reachable.size(); i++)
-            reachable[i] = 0;
-
-    // chech reachability of s from t
-    DFS(t);
-
-    if(!reachable[s]){
-        cout << "Node s not reachable from t" << endl;
-        return 1;
-    }
-
-    // mark as deleted the non-reachable nodes
-    for(int i =0;i < G.size();i++){
-        if(!reachable[i])
-            deleted[i]= 1;
-    }
-
     time_reachability= 0;
 
-    cout << "Insert max time (s): ";
+    cout << "Insert max time (ms): ";
     cin >> MAX_TIME;
-    
-    MAX_TIME = MAX_TIME*1000;
 
     char foutput;
     cout << "Want file output? (y/n) ";
@@ -393,14 +385,12 @@ int main(int argc, char* argv[]){
     start_time = timeMs();
 
     // standard: s = 0, t=last node
-    enumerate_paths_05(s,t);
+    enumerate_paths_05(0, G.size()-1);
     uint64_t duration = (timeMs() - start_time);
 
     cout << endl;
     cout << "File: "<< input_filename;
-    cout << "\ts= " << s;
-    cout << "\tt= " << t<< endl;
-    cout << "Time (ms): " << duration<< endl;
+    cout << "\tTime (ms): " << duration<< endl;
     cout << "Rec calls: " << calls_performed;
     cout << "\tVisits: " << visits_performed << endl;
     cout << "Paths found: " <<count_paths;
@@ -415,7 +405,7 @@ int main(int argc, char* argv[]){
         output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
         output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
         output_file << "Visits of the graph performed are  " << visits_performed << endl;
-        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+        output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
         output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
         output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
         output_file.close();

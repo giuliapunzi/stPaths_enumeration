@@ -2,7 +2,6 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
-#include <stack>
 #include <chrono>
 #include <cstdint>
 
@@ -10,42 +9,33 @@ using namespace std;
 vector<int> deleted;
 vector<int> current_degree; // keep global degree vector, updating it as deletions and insertions go
 
-stack<int> del_stack; // stack of nodes that have been deleted
-
 vector<vector<int>> G;
-vector<int> reachable; // marks nodes that have been visited by the DFS
 
-int visits_performed;
+bool is_edge(int u, int v);
 
 // global variable used to count the number of paths
 // also count the total length of the paths up to now 
 // (can be substituted with full enumeration)
-long long count_paths;
-long long total_length;
+unsigned long count_paths;
+unsigned long long total_length;
 int curr_path_len;
-long good_diff_len;
+unsigned long good_diff_len;
 
 // global variable used to find how many dead ends there are
-long long dead_ends;
-long long dead_total_len; // total length of dead ends
-long dead_diff_len; // edges only belonging to dead ends; increase by 1 every time we backtrack
+unsigned long dead_ends;
+unsigned long long dead_total_len; // total length of dead ends
+unsigned long dead_diff_len; // edges only belonging to dead ends; increase by 1 every time we backtrack
 
-// constant which limits the number of function calls
-// plus global variable that takes into account the number of calls performed
-long MAX_TIME;
+long MAX_TIME; 
 int calls_performed;
-bool lampadina;
 uint64_t start_time;
 
-uint64_t time_reachability;
-
-
-bool is_edge(int u, int v);
 
 uint64_t timeMs() {
   using namespace std::chrono;
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
+
 
 // create graph from file filename (WE REMOVE MULTI-EDGES AND SELF LOOPS)
 void create_graph(char* filename)
@@ -62,11 +52,9 @@ void create_graph(char* filename)
     G.resize(N);
     deleted.resize(N);
     current_degree.resize(N, 0);
-    reachable.resize(N, 1);
 
     // initialize reachable vector to be all 1 and degree to be zero
     for(int i = 0; i < G.size() ; i++){
-        reachable[i] = 1;
         current_degree[i] = 0;
     }
     
@@ -88,9 +76,7 @@ void create_graph(char* filename)
         }
         
     }
-
     cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
-
 
     fclose(input_graph);
     return;
@@ -113,8 +99,21 @@ inline bool is_edge(int u, int v)
 }
 
 
-inline int degree(int u){
-    return current_degree[u];
+// returns degree of node u
+// remember: need to take into account deleted edges
+inline int degree(int u)
+{
+    int deg = 0;
+    if(deleted[u])
+        return -1;
+    else{
+        for(int i = 0; i< G[u].size(); i++){
+            if(!deleted[G[u][i]])
+                deg++;
+        }
+    }
+
+    return deg;
 }
 
 // outputs the vector of (non removed) neighbors of u
@@ -151,30 +150,13 @@ inline void printGraph()
     cout << endl;
 }
 
+
 // ++++++++++++++++++++++++++++++++++ GRAPH MODIFIERS ++++++++++++++++++++++++++++++++
 
 // remove node u from the graph, by marking deleted vector to 0
 inline void remove_node(int u)
 {
     deleted[u] = 1;
-    del_stack.push(u);
-
-    for (auto v : G[u])
-        current_degree[v]--;
-    
-    return;
-}
-
-// reinserts top of the stack node in the graph
-inline void reinsert_node()
-{
-    int u = del_stack.top();
-    del_stack.pop();
-    deleted[u] = 0;
-
-    for (auto v : G[u])
-        current_degree[v]++;
-    
     return;
 }
 
@@ -182,131 +164,135 @@ inline void reinsert_node()
 // ++++++++++++++++++++++++++++++++ GRAPH VISITS +++++++++++++++++++++++++++++++
 
 // recursive DFS procedure from node u
-void DFS(int u){
-    reachable[u] = 1;
+void DFS(int u, vector<bool> &visited){
+    // cout << "Entering DFS for " << u << endl << flush;
+    visited[u] = true;
+
     for(int i = 0; i < G[u].size(); i++)
     {
-        // reachable being equal to zero means that the node has not been deleted nor already visited
-        if(!reachable[G[u][i]])
-            DFS(G[u][i]);
+        if(!visited[G[u][i]] && !deleted[G[u][i]])
+            DFS(G[u][i], visited);
     }
+
     return;
 }
 
+int visits_performed;
 
-
-// starts a visit from t, and marks as reachable the nodes that
-// are reached through the visit.
-void reachability_check(int t){
-    reachable.resize(G.size());
+// starts a visit from t, and marks as good neighbors the neighbors of s that
+// are reached through the visit. Outputs the vector of these good neighbors.
+vector<bool> check_neighbors(int s, int t){
+    vector<bool> visited(G.size());
     visits_performed++;
 
     // initialize all deleted nodes as visited
-    for(int i = 0; i< reachable.size(); i++){
+    for(int i = 0; i< visited.size(); i++){
         if(deleted[i])
-            reachable[i] = 1;
+            visited[i] = true;
         else
-            reachable[i] = 0;
+            visited[i] = false;
     }
 
-    uint64_t start = timeMs();
     // launch DFS from node t
-    DFS(t);
-    time_reachability += (timeMs() - start);
+    DFS(t, visited);
 
-    // go through all nodes of the graph and deleted the ones with reachable value = 0
-    // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
-    for(int u = 0; u < G.size(); u++){
-        // here we need the differentiation between -1 and 0: otherwise we add to the stack nodes already removed
-        // NO: CHECK IF DELETED BY USING REGULAR VECTOR!
-        if(!reachable[u] && !deleted[u]){
-            remove_node(u);
-        }
+    vector<int> neigh = neighbors(s);
+    // find out which neighbors of s have been visited, and output them
+    vector<bool> good_neighbors(neigh.size());
+    for(int i = 0; i < neigh.size(); i++){
+        if(visited[neigh[i]])
+            good_neighbors[i] = true;
+        else
+            good_neighbors[i] = false;
+            
     }
-
-    return;
+    return good_neighbors;
 }
 
 
 // paths must return the status, either success or fail
 // we do so by returning true/false: true = success
-bool paths_05(int u, int t){
+bool paths_0(int s, int t){
     curr_path_len++;
 
     // if(calls_performed >= MAX_CALLS)
     //     return true;
-
+    
     if(timeMs() - start_time >= MAX_TIME)
         return true;
 
     calls_performed++;
-
+    
     // if(calls_performed % 1000000 == 0)
     //     cout << "*" << flush;
 
-    // base case
-    if(u== t){
+    if(s == t){
         count_paths++;
-        total_length+=curr_path_len;
-        curr_path_len--;
         good_diff_len++;
+
+        // every time we arrive at t, we sum to the total length the current path length
+        // we also need to decrease the current path length
+        total_length += curr_path_len;
+        curr_path_len--;
         return true;
     }
     
-    // we have non-deleted neighbors to explore
-    if(degree(u) > 0){
-        remove_node(u); // also adds to stack
+    vector<int> curr_neigh = neighbors(s);
+    
 
-        bool success = true; 
-        for(auto v: G[u]){ 
-            if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
-                success = paths_05(v, t);
-                // if(!success && !reachable[u])
-                if(degree(u) == 0 && lampadina){ // ALTERNATIVE
-                    curr_path_len--;
-                    dead_diff_len++;
-                    return false; // return at first failing neighbor
-                }
-                // if(!success && reachable[u])
-                if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
-                    lampadina=false;
-                }
-            }
-            
-        }
+    if(curr_neigh.size() == 0){
+        // dead ends is increased: we failed on a node
+        dead_ends++;
 
-        // rimettere le cose a posto       
-        // pop stack until u (included) and mark as not deleted
-        while(del_stack.top() != u){
-            reinsert_node();
-        }
-        reinsert_node(); // here we are inserting u 
-
-        curr_path_len--;
-        good_diff_len++;
-        return true;
-    }
-
-    // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
-    // if(degree(u) == 0 && !lampadina){ 
-    if(lampadina){
-        curr_path_len--;
+        // increase total dead ends' length
+        dead_total_len = dead_total_len + curr_path_len;
         dead_diff_len++;
+
+        // decrease current path length as we are backtracking
+        curr_path_len--;
         return false;
     }
+    deleted[s] = 1;
 
-    // here we are just arriving in a node of degree zero
-    reachability_check(t);
-    lampadina = true;
-    
-    dead_ends++;
-    dead_total_len+=curr_path_len;
-    dead_diff_len++;
+    bool neigh_value = true;
+    bool ret_value = false;
+    bool first_good = false;
+    // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
+    int i = 0;
+    while(neigh_value && i < curr_neigh.size()){
+        neigh_value = paths_0(curr_neigh[i], t);
+        ret_value = ret_value || neigh_value;
+        i++;
+    }
+
+    // if we found a failing neighbor, perform visit from t
+    if(!neigh_value){
+        vector<bool> good_neigh = check_neighbors(s, t);
+
+        // at this point, resume where we left off to recurse in good neighbors
+        for (; i < curr_neigh.size(); i++)
+        {
+            if(good_neigh[i]){
+                bool test = paths_0(curr_neigh[i], t);
+                ret_value = ret_value || test;
+            }
+                
+        }
+    }
+    deleted[s] = 0;
+
+    if(!ret_value)
+        dead_diff_len++;
+
+    if(ret_value)
+        good_diff_len++;
+
+    // we need to decrease current path length IN ANY CASE when returning
     curr_path_len--;
-    return false;
+    return ret_value;
 }
 
-void enumerate_paths_05(int s, int t){
+void enumerate_paths_0(int s, int t){
     count_paths = 0;
     total_length = 0;
     dead_ends = 0;
@@ -315,23 +301,21 @@ void enumerate_paths_05(int s, int t){
     good_diff_len = 0;
     dead_diff_len = 0;
     dead_total_len = 0;
-    visits_performed= 0;
-    paths_05(s,t);
+    visits_performed=0;
+    paths_0(s,t);
     good_diff_len--; // source returned true and thus added one 
-
     return;
 }
 
 int main(int argc, char* argv[]){ 
+
     if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
         return 1;
     }
 
     char * input_filename = argv[1];
-    create_graph(input_filename); // initialize 
-
-    
+    create_graph(input_filename);
 
     // find max degree of graph
     int maxdeg = 0;
@@ -343,80 +327,45 @@ int main(int argc, char* argv[]){
 
     // here we also find the number of edges
     int numedges = 0;
-    int numnodes = 0;
+    int numnodes = G.size();
 
     for(int node = 0; node < G.size(); node++){
-        if(!deleted[node]){
-            numnodes++;
-            numedges += G[node].size();
-        }
+        numedges += G[node].size();
     }
     numedges = numedges/2;
 
     cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    int s , t;
-
-    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    cin >> s;
-    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    cin >> t;
-
-    // initialize all nodes as non-reachable
-    for(int i = 0; i< reachable.size(); i++)
-            reachable[i] = 0;
-
-    // chech reachability of s from t
-    DFS(t);
-
-    if(!reachable[s]){
-        cout << "Node s not reachable from t" << endl;
-        return 1;
-    }
-
-    // mark as deleted the non-reachable nodes
-    for(int i =0;i < G.size();i++){
-        if(!reachable[i])
-            deleted[i]= 1;
-    }
-
-    time_reachability= 0;
-
-    cout << "Insert max time (s): ";
+    cout << "Insert max time (ms): ";
     cin >> MAX_TIME;
-    
-    MAX_TIME = MAX_TIME*1000;
 
     char foutput;
     cout << "Want file output? (y/n) ";
     cin >> foutput;
-    start_time = timeMs();
 
+    start_time = timeMs();
     // standard: s = 0, t=last node
-    enumerate_paths_05(s,t);
+    enumerate_paths_0(0, G.size()-1);
     uint64_t duration = (timeMs() - start_time);
 
     cout << endl;
     cout << "File: "<< input_filename;
-    cout << "\ts= " << s;
-    cout << "\tt= " << t<< endl;
-    cout << "Time (ms): " << duration<< endl;
+    cout << "\tTime (ms): " << duration<< endl;
     cout << "Rec calls: " << calls_performed;
     cout << "\tVisits: " << visits_performed << endl;
     cout << "Paths found: " <<count_paths;
     cout << "\tDead ends: " << dead_ends << endl;
-    cout << "Reachability time (ms): "<< time_reachability << endl; 
 
     if(foutput == 'y' || foutput == 'Y'){
         // reporting to file
         ofstream output_file; 
-        output_file.open("output-v05.txt", ios::app);
+        output_file.open("output-v0.txt", ios::app);
         output_file << "-----------------------------------------------------"<< endl;
         output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
         output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
         output_file << "Visits of the graph performed are  " << visits_performed << endl;
-        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-        output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+        output_file << "Paths found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+        output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
         output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
         output_file.close();
     }

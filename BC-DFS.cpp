@@ -295,16 +295,24 @@ int BC_DFS(int u, int t){
     if(current_sol.size() != curr_path_len)
         throw logic_error("Partial solution and its length do not coincide!");
 
-
+    int num_visited_neigh = 0;
     for(auto v : G[u]){
         // if v is not in the current stack, recurse
         if(find(current_sol.begin(), current_sol.end(), v) == current_sol.end()){
+            num_visited_neigh++;
             neighf = BC_DFS(v, t);
             if(neighf != MAX_DIST)
                 currF = std::min(currF, neighf + 1);
         }
     }
-    
+
+    // we have a dead end if no neighbor was explored
+    if(num_visited_neigh == 0){
+        if(currF != MAX_DIST)
+            throw logic_error("No neighbors visited but updated F value!");
+        dead_ends++;
+    }
+        
     if (currF == MAX_DIST){
         node_barriers[u] = MAX_DIST;
         dead_diff_len++;

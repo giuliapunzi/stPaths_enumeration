@@ -12,6 +12,9 @@ vector<int> reachable; // marks nodes that have been visited by the DFS
 vector<int> current_sol; // stack of current solution
 vector<int> node_barriers;
 
+long barrier_updates_num;
+long barrier_update_time;
+
 vector<vector<int>> G;
 
 bool is_edge(int u, int v);
@@ -307,7 +310,10 @@ int BC_DFS(int u, int t){
         dead_diff_len++;
     }
     else{
+        uint64_t start_bar = timeMs();
         update_barrier(u, currF);
+        barrier_update_time+= (timeMs() - start_bar);
+        barrier_updates_num++;
         good_diff_len++;
     }
 
@@ -402,9 +408,10 @@ int main(int argc, char* argv[]){
     cout << "\tt= " << t<< endl;
     cout << "Time (ms): " << duration<< endl;
     cout << "Rec calls: " << calls_performed;
-    cout << "\tVisits: " << visits_performed << endl;
+    cout << "\tVisits: " << barrier_updates_num << endl;
     cout << "Paths found: " <<count_paths;
     cout << "\tDead ends: " << dead_ends << endl;
+    cout << "Time in barrier updates : " <<barrier_update_time << endl;
 
     if(foutput == 'y' || foutput == 'Y'){
         // reporting to file
@@ -413,7 +420,7 @@ int main(int argc, char* argv[]){
         output_file << "-----------------------------------------------------"<< endl;
         output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
         output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
-        output_file << "Visits of the graph performed are  " << visits_performed << endl;
+        output_file << "Visits of the graph performed are  " << barrier_updates_num << " for a total time of " << barrier_update_time << endl;
         output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
         output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
         output_file << "-----------------------------------------------------"<< endl<<endl<<endl;

@@ -1,8 +1,10 @@
 # stPaths_enumeration
 ## Lazy Algorithms for st-Paths Enumeration 
-This repository contains the code for several lazy algorithms for st-paths enumeration, plus two classical ones.
+This repository contains the code for several lazy algorithms for st-paths enumeration, plus three classical ones.
 
 The classical algorithms (`stPaths-classical.cpp` and `stPaths-classicalBCC.cpp`) perform binary partition, mantaining in each recursive node a certificate for the existence of a path: for the first algorithm, the certificate is a visit from target node t, while in the second algorithm the certificate is the sequence of BCCs connecting the current node to the target.
+
+We also added an implementation of Johnson's classical st-paths enumeration algorithm, `Johnson.cpp`.
 
 Algorithm `BC-DFS.cpp` is an implemetnation of the hop-constrained algorithm from [this paper](https://www.researchgate.net/publication/351427251_Efficient_Hop-constrained_s-t_Simple_Path_Enumeration) by Peng et al. (2021), where the constraint is set to be virtually infinite, to obtain an enumeration of paths of any length. 
 

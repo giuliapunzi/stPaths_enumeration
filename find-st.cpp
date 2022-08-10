@@ -4,11 +4,12 @@
 #include <algorithm>
 #include <stdexcept>
 #include <time.h>
+#include <stack>
 
 using namespace std;
 
 vector<vector<int>> G;
-vector<int> reachable;
+vector<bool> reachable;
 
 // checks if a given edge (u,v) belongs to graph G
 inline bool is_edge(int u, int v)
@@ -85,6 +86,30 @@ void DFS(int u){
     return;
 }
 
+void DFS_iter(int u){
+    // initialize reachable
+    for(int i = 0; i< reachable.size(); i++)
+        reachable[i] = false;
+
+    stack<int> DFS_stack;
+    DFS_stack.push(u);
+
+    while (!DFS_stack.empty())
+    {
+        int v = DFS_stack.top();
+        DFS_stack.pop();
+        reachable[v] = true;
+
+        for (auto x : G[v])
+        {
+            if(!reachable[x]) // and not dleted
+                DFS_stack.push(x);
+        }
+        
+    }
+    
+}
+
 int main(int argc, char* argv[]){ 
      if (argc < 2) {
         std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
@@ -96,14 +121,14 @@ int main(int argc, char* argv[]){
 
     // initialize all nodes as non-reachable
     for(int i = 0; i< reachable.size(); i++)
-        reachable[i] = 0;
+        reachable[i] = false;
 
     srand (time(NULL));
     int s =  rand() % G.size();
     int t = rand() % G.size();
 
     // chech reachability of s from t
-    DFS(t);
+    DFS_iter(t);
 
     while(!reachable[s]){
         s =  rand() % G.size();

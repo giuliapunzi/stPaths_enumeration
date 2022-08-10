@@ -19,6 +19,10 @@ vector<vector<int>> G;
 
 bool is_edge(int u, int v);
 
+long time_evals = 0;
+long eval_resolution = 1000;
+bool abort_alg = false;
+
 // global variable used to count the number of paths
 // also count the total length of the paths up to now 
 // (can be substituted with full enumeration)
@@ -86,7 +90,7 @@ void create_graph(char* filename)
         }
         
     }
-    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+    // cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
     fclose(input_graph);
     return;
@@ -252,24 +256,29 @@ void update_barrier(int u, int l){
             // if neighbor is not in current stack, recurse
             if(find(current_sol.begin(), current_sol.end(), v) == current_sol.end())
                 update_barrier(v, l+1);
-        }
-        
+        } 
     }
-
     return;
 }
 
 
-// paths must return the status, either success or fail
-// we do so by returning true/false: true = success
-int BC_DFS(int u, int t){
+long BC_DFS(int u, int t){
     curr_path_len++;
     // cout << "Call for " << u << endl;
     // if(calls_performed >= MAX_CALLS)
     //     return true;
     
-    if(timeMs() - start_time >= MAX_TIME)
-        return true;
+    // if(timeMs() - start_time >= MAX_TIME)
+    //     return MAX_DIST;
+
+    if(abort_alg) return true;
+    else if(MAX_TIME>0 && time_evals%eval_resolution == 0){
+        if (timeMs()-start_time>= MAX_TIME){
+            abort_alg = true; 
+            return true;
+        }
+    }   
+    time_evals++;
 
     calls_performed++;
     
@@ -279,6 +288,7 @@ int BC_DFS(int u, int t){
     if(u == t){
         count_paths++;
         good_diff_len++;
+        // cout << "=========Arrived at t" << endl << flush;
 
         // every time we arrive at t, we sum to the total length the current path length
         // we also need to decrease the current path length
@@ -288,9 +298,10 @@ int BC_DFS(int u, int t){
     }
     
     
-    int currF = MAX_DIST;
+    long currF = MAX_DIST;
     current_sol.push_back(u);
-    int neighf;
+    long neighf;
+    bool updated = false;
 
     if(current_sol.size() != curr_path_len)
         throw logic_error("Partial solution and its length do not coincide!");
@@ -301,10 +312,22 @@ int BC_DFS(int u, int t){
         if(find(current_sol.begin(), current_sol.end(), v) == current_sol.end()){
             num_visited_neigh++;
             neighf = BC_DFS(v, t);
-            if(neighf != MAX_DIST)
-                currF = std::min(currF, neighf + 1);
+            // if(neighf == 1)
+            //     cout << "Jumped at currF 2: u=" << u << endl;
+            if(neighf < MAX_DIST){
+                // cout<< "Neighbor value for " << v << " is "<< neighf << ";  while currF is "<< currF <<"\t";
+                if(currF > neighf + 1){
+                // currF = std::min(currF, neighf + 1);
+                    currF = neighf+1;
+                    updated = true;
+                    // cout << "currF for " << u <<" updated to " << currF << " because of " << v << " \t"<<flush;
+                }
+            }
         }
     }
+    
+    // if(currF == 1)
+    //     cout << "Arrived at neighbor of source: u=" << u << endl;
 
     // we have a dead end if no neighbor was explored
     if(num_visited_neigh == 0){
@@ -318,9 +341,10 @@ int BC_DFS(int u, int t){
         dead_diff_len++;
     }
     else{
-        uint64_t start_bar = timeMs();
+        // cout << "since it was updated, perform visit" << endl << flush;
+        // uint64_t start_bar = timeMs();
         update_barrier(u, currF);
-        barrier_update_time+= (timeMs() - start_bar);
+        // barrier_update_time+= (timeMs() - start_bar);
         barrier_updates_num++;
         good_diff_len++;
     }
@@ -329,30 +353,35 @@ int BC_DFS(int u, int t){
 
     // we need to decrease current path length IN ANY CASE when returning
     curr_path_len--;
+
     return currF;
 }
 
 
 int main(int argc, char* argv[]){ 
 
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " FILEDIRECTORY source target MAX_TIME " << endl;
         return 1;
     }
 
     char * input_filename = argv[1];
-    create_graph_old(input_filename);
+    int s = atoi(argv[2]);
+    int t = atoi(argv[3]);
+    MAX_TIME = atoi(argv[4])*1000;
+
+    create_graph(input_filename);
 
     reachable.resize(G.size());
     node_barriers.resize(G.size());
 
     // find max degree of graph
-    int maxdeg = 0;
-    for(int u=0; u < G.size(); u++){
-        if(maxdeg< degree(u)){
-            maxdeg = degree(u);
-        }
-    }
+    // int maxdeg = 0;
+    // for(int u=0; u < G.size(); u++){
+    //     if(maxdeg< degree(u)){
+    //         maxdeg = degree(u);
+    //     }
+    // }
 
     // here we also find the number of edges
     int numedges = 0;
@@ -369,13 +398,13 @@ int main(int argc, char* argv[]){
         node_barriers[i] = 0;
     
 
-    cout << "Graph has maximum degree " << maxdeg << endl; 
+    // cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    int s , t;
-    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    cin >> s;
-    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    cin >> t;
+    // int s , t;
+    // cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
+    // cin >> s;
+    // cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
+    // cin >> t;
 
     // initialize all nodes as non-reachable
     for(int i = 0; i< reachable.size(); i++)
@@ -395,14 +424,14 @@ int main(int argc, char* argv[]){
             deleted[i]= 1;
     }
 
-    cout << "Insert max time (s): ";
-    cin >> MAX_TIME;
+    // cout << "Insert max time (s): ";
+    // cin >> MAX_TIME;
 
-    MAX_TIME = MAX_TIME*1000;
+    // MAX_TIME = MAX_TIME*1000;
 
-    char foutput;
-    cout << "Want file output? (y/n) ";
-    cin >> foutput;
+    // char foutput;
+    // cout << "Want file output? (y/n) ";
+    // cin >> foutput;
 
 
     start_time = timeMs();
@@ -410,30 +439,32 @@ int main(int argc, char* argv[]){
     BC_DFS(s, t);
     uint64_t duration = (timeMs() - start_time);
 
-    cout << endl;
-    cout << "File: "<< input_filename;
-    cout << "\ts= " << s;
-    cout << "\tt= " << t<< endl;
-    cout << "Time (ms): " << duration<< endl;
-    cout << "Rec calls: " << calls_performed;
-    cout << "\tVisits: " << barrier_updates_num << endl;
-    cout << "Paths found: " <<count_paths;
-    cout << "\tDead ends: " << dead_ends << endl;
-    cout << "Time in barrier updates : " <<barrier_update_time << endl;
+    cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed << " " << count_paths << " " << dead_ends << endl;
 
-    if(foutput == 'y' || foutput == 'Y'){
-        // reporting to file
-        ofstream output_file; 
-        output_file.open("output-BC-DFS.txt", ios::app);
-        output_file << "-----------------------------------------------------"<< endl;
-        output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-        output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
-        output_file << "Visits of the graph performed are  " << barrier_updates_num << " for a total time of " << barrier_update_time << endl;
-        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-        output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
-        output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-        output_file.close();
-    }
+    // cout << endl;
+    // cout << "File: "<< input_filename;
+    // cout << "\ts= " << s;
+    // cout << "\tt= " << t<< endl;
+    // cout << "Time (ms): " << duration<< endl;
+    // cout << "Rec calls: " << calls_performed;
+    // cout << "\tVisits: " << barrier_updates_num << endl;
+    // cout << "Paths found: " <<count_paths;
+    // cout << "\tDead ends: " << dead_ends << endl;
+    // cout << "Time in barrier updates : " <<barrier_update_time << endl;
+
+    // if(foutput == 'y' || foutput == 'Y'){
+    //     // reporting to file
+    //     ofstream output_file; 
+    //     output_file.open("output-BC-DFS.txt", ios::app);
+    //     output_file << "-----------------------------------------------------"<< endl;
+    //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
+    //     output_file << "Visits of the graph performed are  " << barrier_updates_num << " for a total time of " << barrier_update_time << endl;
+    //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    //     output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
+    //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    //     output_file.close();
+    // }
 
     return 0;
 }

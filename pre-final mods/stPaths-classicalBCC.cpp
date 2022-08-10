@@ -3,19 +3,20 @@
 #include <vector>
 #include <algorithm>
 #include <stack>
+#include <stdexcept>
 #include <chrono>
 #include <cstdint>
 
 using namespace std;
+
 vector<int> deleted;
 vector<int> current_degree; // keep global degree vector, updating it as deletions and insertions go
 
 stack<int> del_stack; // stack of nodes that have been deleted
-// vector<int> current_sol;
-
 vector<vector<int>> G;
 
 vector<int> reachable; // marks nodes that have been visited by the DFS
+long visits_performed;
 
 // global variable used to count the number of paths
 // also count the total length of the paths up to now 
@@ -23,38 +24,21 @@ vector<int> reachable; // marks nodes that have been visited by the DFS
 long long count_paths;
 long long total_length;
 int curr_path_len;
-long good_diff_len;
+long long good_diff_len;
+long deleted_w_caterpillar;
+long time_reachability;
+long time_caterpillar;
 
-// global variable used to find how many dead ends there are
-long long dead_ends;
-long long dead_total_len; // total length of dead ends
-long dead_diff_len; // edges only belonging to dead ends; increase by 1 every time we backtrack
-
-// constant which limits the number of function calls
-// plus global variable that takes into account the number of calls performed
-// const long MAX_CALLS = 5000000000; 
 long MAX_TIME;
-unsigned long calls_performed;
-bool lampadina;
-uint64_t start_time;
 
-long long deleted_w_caterpillar;
+uint64_t start_time;
+int calls_performed;
+
+
+// vector<vector<int>> BCC_stack;
+// vector<int> target_stack;
 
 bool is_edge(int u, int v);
-
-int print_count;
-
-long visits_performed_reach;
-long visits_performed_cat;
-
-uint64_t time_reachability;
-uint64_t time_caterpillar;
-
-
-
-long time_evals = 0;
-long eval_resolution = 1000;
-bool abort_alg = false;
 
 
 uint64_t timeMs() {
@@ -105,12 +89,13 @@ void create_graph(char* filename)
         
     }
 
-    // cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
 
     fclose(input_graph);
     return;
 }
+ 
 
 // create graph from file filename 
 // WE REMOVE SELF LOOPS
@@ -179,6 +164,14 @@ inline bool is_edge(int u, int v)
 }
 
 
+inline bool is_neighbor(int u, int v){
+    if(deleted[v])
+        return false;
+    
+    return find(G[u].begin(), G[u].end(), v) != G[u].end();
+}
+
+
 inline int degree(int u){
     return current_degree[u];
 }
@@ -217,10 +210,11 @@ inline void printGraph()
     cout << endl;
 }
 
+
 // ++++++++++++++++++++++++++++++++++ GRAPH MODIFIERS ++++++++++++++++++++++++++++++++
 
 // remove node u from the graph, by marking deleted vector to 0
-inline void remove_node(int u) 
+inline void remove_node(int u)
 {
     deleted[u] = 1;
     del_stack.push(u);
@@ -230,7 +224,6 @@ inline void remove_node(int u)
     
     return;
 }
-
 
 // reinserts top of the stack node in the graph
 inline void reinsert_node()
@@ -246,12 +239,14 @@ inline void reinsert_node()
 }
 
 
+
 inline void remove_simple(int u){
     deleted[u] = 1;
 
     for (auto v : G[u])
         current_degree[v]--;
     
+    // cout << "Removing simple " << u << endl;
     return;
 }
 
@@ -261,56 +256,47 @@ inline void reinsert_simple(int u){
     for (auto v : G[u])
         current_degree[v]++;
     
+    // cout << "Reinserting simple " << u << endl;
     return;
 }
 
 
-
-
 // ++++++++++++++++++++++++++++++++ GRAPH VISITS +++++++++++++++++++++++++++++++
-// A recursive function that find articulation
-// points using DFS traversal
-// adj --> Adjacency List representation of the graph
-// u --> The vertex to be visited next
-// visited --> keeps track of visited vertices
-// disc --> Stores discovery times of visited vertices
-// low -- >> earliest visited vertex (the vertex with minimum
-// discovery time) that can be reached from subtree
-// rooted with current vertex
-// parent --> Stores the parent vertex in DFS tree
-// is_art --> Stores articulation points
+
+
 vector<bool> visited;
 vector<int> disc;
 vector<int> low;
-// vector<bool> is_art;
-// vector<bool> good_art;
 vector<int> parent; 
 vector<int> cat_stack;
 int visit_time;
-bool found_s;
 int current_s;
+int last_art;
+bool found_s;
+bool root_art_pt;
 
 void find_artpts(int s, int u)
 {
+    // cout << "Inserting "<< u << " in cat stack"<< endl<<flush;
     cat_stack.push_back(u);
     // Count of children in DFS Tree
     int children = 0;
-    if(u== s){
-        found_s = true;
-    }
  
     // Mark the current node as visited
     visited[u] = true;
+
+    if(u== s)
+        found_s = true;
  
-    // Initialize discovery time and low value
+    // Initialize discovery time and lowpoint value
     disc[u] = low[u] = ++visit_time;
     
-    int root_correct_neigh = -1;
     bool root_found = false; // becomes true when the root finds s
     bool good_for_current_BCC;    
 
     // Go through all non-deleted neighbors of u
     for (auto v : G[u]) {
+        // cout <<v << " is a neighbor of " << u << endl;
         if(!deleted[v]){
             // If v is not visited yet, then make it a child of u
             // in DFS tree and recur for it
@@ -318,28 +304,36 @@ void find_artpts(int s, int u)
                 good_for_current_BCC = false;
                 parent[v] = u;
                 children++;
-                find_artpts(s,v);
+                find_artpts(s, v);
 
                 // if we are the root and we just found s, v is the only good neighbor
-                // if(parent[u] == -1){
-                //     if(!root_found){ 
-                //         root_correct_neigh = v; 
-                //         root_found = true;
-                //     }
-                // }
-
-                // if the root finishes a child, then it basically closes an articulation point
-                // if it has seen s, this is the correct BCC
                 if(parent[u] == -1 && found_s){
+                    // if(!root_found && found_s){ // the nodes in the stack right now are the 'correct BCC' for t
+                    // BCC_stack.push_back({v});
+
                     // it could be the second BCC for t so we need to unstack until v
                     int x = cat_stack.back();
                     while(x != v){ // If we are in the "right" BCC add it to the vector   
+                        // BCC_stack.back().push_back(x);
                         cat_stack.pop_back();
                         x = cat_stack.back();
                     }
                     cat_stack.pop_back(); 
-
+                    // int ind = cat_stack.size() -1;
+                    // while(cat_stack[ind] != v)
+                    // {   
+                    //     // if the element of the stack is a neighbor of t 
+                    //     // if (find(G[u].begin(), G[u].end(), cat_stack[ind])!= G[u].end())
+                    //     if (is_neighbor(u, cat_stack[ind])){
+                    //         root_correct_neigh.push_back(cat_stack[ind]);
+                    //     }  
+                    //     ind--;
+                    // }
+                    // root_found = true;
+                    
+                    // WE SHOULD BE ABLE TO RETURN HERE!
                     return;
+                
                 }
     
                 // Check if the subtree rooted with v has
@@ -349,36 +343,70 @@ void find_artpts(int s, int u)
                 // If u is not root and low value of one of
                 // its child is more than discovery value of u.
                 if (parent[u] != -1 && low[v] >= disc[u]){ // here is where I close my articulation point
-                    // is_art[u] = true;
-                    
-                    // I need to pop the stack until v (the last neighbor) If s in inside, I am good. also, delete nodes
-                    int x = cat_stack.back();
-                    while(x != v){
-                        if(x == current_s){
+                    // cout << "Closed an articulation point " << endl << flush;
+                    int check = cat_stack.size()-1;
+                    // first, find out if good for current BCC by scanning only the current BCC
+                    while(cat_stack[check] != v)
+                    {
+                        if (cat_stack[check]== current_s){
                             good_for_current_BCC = true;
-                        }
-                        cat_stack.pop_back();
-                        x = cat_stack.back();
+                        }  
+                        check--;
                     }
-                    if(x == current_s){
+                    if(v == current_s) 
                         good_for_current_BCC = true;
-                    }
-                    cat_stack.pop_back(); // remove also v
-
+                    
                     // NEW: SET THE CURRENT ART POINT AS S!
                     if(good_for_current_BCC){
-                        // good_art[u] = true;
-                        current_s = u;
-                    }
+                        // if at this point the current source was s, this is the last art point
+                        // NEED TO CHECK THAT IT IS DIFFERENT FROM S
+                        // if(current_s == s && u != s)
+                        //     last_art = u;
+                        
+                        // BCC_stack.push_back({v}); // initialize the BCC as v
 
-                    if(!good_for_current_BCC){ // if I am not good, I need to delete my neighbors that have discovery time greater than v
-                        for(auto neigh : G[u]){
-                            if(visited[neigh] && !deleted[neigh] && disc[neigh] >= disc[v]){
-                                remove_node(neigh);
-                                deleted_w_caterpillar++;
-                                // cout << "[caterpillar removed " << neigh << "]" << endl;
-                            }
+                        // remove stuff from stack
+                        int x = cat_stack.back();
+                        while(x != v){ // If we are in the "right" BCC add it to the vector                            
+                            // BCC_stack.back().push_back(x);
+                            cat_stack.pop_back();
+                            x = cat_stack.back();
                         }
+                        cat_stack.pop_back(); 
+
+                        // if(!is_neighbor(u, v))
+                        //     throw logic_error("v should be a neighbor of u!!!");
+
+                        current_s = u; 
+
+                        // push the articulation point to the stack, and its vector of good neighbors in the corresponding
+                        // position of the target_neighbors vector. 
+                        // temp_target_stack.push_back(u);
+                        // temp_target_neigh.push_back(good_neigh_current_target);
+                        // target_stack.push_back(u);
+                    }
+                        
+                    if(!good_for_current_BCC){ // if I am not good, I need to delete my neighbors that have discovery time greater than v
+                        // remove stuff and delete
+                        int x = cat_stack.back();
+                        while(x != v){ // NEW: ONLY DELETE NEIGHBORS, SO MORE CHECKS BUT LESS WORK OVERALL
+                            cat_stack.pop_back();
+                            if(is_neighbor(u,x)){
+                                remove_node(x);
+                                // deleted_w_caterpillar++;
+                                // cout << "[caterpillar removed " << x << "]" << endl;
+                            }
+                            
+                            x = cat_stack.back();
+                        }
+                        cat_stack.pop_back();
+
+                        if(!is_neighbor(u, v))
+                            throw logic_error("v should be a neighbor of u!!!");
+
+                        remove_node(x); // v is always neighbor
+                        // deleted_w_caterpillar++;
+                        // cout << "[caterpillar removed " << x << "]" << endl;
                     }
                 }
             }
@@ -388,16 +416,18 @@ void find_artpts(int s, int u)
                 low[u] = min(low[u], disc[v]);
         }
     }
- 
+    
+    return;
     // If u is root of DFS tree and has two or more children.
+    // In this case, we don't actually care about removing other BCCs, as they will never be explored
     // if (parent[u] == -1 && children > 1){
-    //     is_art[u] = true;
-    //     good_art[u] = true; // root is always good
+    //     root_art_pt = true;
 
-    //     // // remove all neighbors different from root_correct
-    //     // for(auto neigh : G[u]){
+    //     // remove neighbors of t that are bad, i.e. the neighbors not in root_correct_neigh
+    //     // these can be removed, as they do not change as we go deeper in the recursion, only when we return normally. 
+    //     // for(auto neigh : neighbors(u)){
     //     //     // cout << "Considering " << neigh << endl;
-    //     //     if(neigh!= root_correct_neigh && parent[neigh] == u && !deleted[neigh]){ // need to check if neighbor's parent is t
+    //     //     if(find(root_correct_neigh.begin(), root_correct_neigh.end(), neigh) == root_correct_neigh.end()){ // need to check if neighbor's parent is t
     //     //         // cout << "Removing " << neigh << endl;
     //     //         remove_node(neigh);
     //     //         deleted_w_caterpillar++;
@@ -405,53 +435,63 @@ void find_artpts(int s, int u)
     //     //     }
     //     // }
     // }
-
 }
 
 // start visit for finding articulation points from t
 void find_caterpillar(int s, int t)
-{
+{   
     cat_stack.erase(cat_stack.begin(), cat_stack.end());
     visit_time = 0;
+    visits_performed++;
     found_s = false;
-    visits_performed_cat++;
     current_s = s;
+    last_art = -1;
 
     for(int i = 0; i < G.size(); i++){
         visited[i] = false;
-        // is_art[i] = false;
-        // good_art[i] = false;
         parent[i] = -2;
     }
     
     parent[t] = -1;
 
-    // uint64_t start = timeMs();
-    // launch DFS from node t
-     // only interested in the ones from s to t = caterpillar
-    find_artpts(s,t);
+    // cout << "About to find art points from "<< s << " to "<< t;
+    // printGraph();
+    uint64_t start = timeMs();
 
-    // any nodes left in the stack can be deleted (bad neighbors of t)
-    // while(!cat_stack.empty()){ 
-    //     int x = cat_stack.back();
-    //     remove_node(x);
-    //     cat_stack.pop_back();
-    // }
+    // sizes of the stacks
+    // int size_t_stack = target_stack.size();
+    // int size_C_stack = BCC_stack.size();
+
+
+     // only interested in the ones from s to t = caterpillar
+    find_artpts(s, t);
+
+    // after the artpoints call, we added stuff IN REVERSE ORDER from size_C_stack+1 and size_t_stack+1 onwards.    
+    // reverse(target_stack.begin() + size_t_stack, target_stack.end());
+    // reverse(BCC_stack.begin() + size_C_stack, BCC_stack.end());
+
+    // if(target_stack.size() != BCC_stack.size()-1)
+    //     throw logic_error("Wrong number of targets wrt BCCs when exiting caterpillar");
+
 
     // time_caterpillar += (timeMs() - start);
-
+    return;
 }
+
 
 
 // recursive DFS procedure from node u
 void DFS(int u){
+    // cout << "Entering DFS for " << u << endl << flush;
     reachable[u] = 1;
+
     for(int i = 0; i < G[u].size(); i++)
     {
         // reachable being equal to zero means that the node has not been deleted nor already visited
         if(!reachable[G[u][i]])
             DFS(G[u][i]);
     }
+
     return;
 }
 
@@ -459,7 +499,8 @@ void DFS(int u){
 // starts a visit from t, and marks as reachable the nodes that
 // are reached through the visit.
 void reachability_check(int t){
-    visits_performed_reach++;
+    reachable.resize(G.size());
+    visits_performed++;
 
     // initialize all deleted nodes as visited
     for(int i = 0; i< reachable.size(); i++){
@@ -469,10 +510,8 @@ void reachability_check(int t){
             reachable[i] = 0;
     }
 
-    // uint64_t start = timeMs();
     // launch DFS from node t
     DFS(t);
-    // time_reachability += (timeMs() - start);
 
     // go through all nodes of the graph and deleted the ones with reachable value = 0
     // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
@@ -480,35 +519,26 @@ void reachability_check(int t){
         // here we need the differentiation between -1 and 0: otherwise we add to the stack nodes already removed
         // NO: CHECK IF DELETED BY USING REGULAR VECTOR!
         if(!reachable[u] && !deleted[u]){
+            // deleted[u] = true;
+            // del_stack.push(u);
             remove_node(u);
-            // cout << "[reachability removed "<< u<< "]" << endl;
         }
     }
+
     return;
 }
 
 
-
 // paths must return the status, either success or fail
 // we do so by returning true/false: true = success
-bool paths_075(int u, int t){
-    // current_sol.push_back(u);
+void paths_classic_BCC(int u, int t){
     curr_path_len++;
 
     // if(calls_performed >= MAX_CALLS)
-    //     return true;
+    //     return;
 
-    // if(timeMs() - start_time >= MAX_TIME)
-    //     return true;
-
-    if(abort_alg) return true;
-    else if(MAX_TIME>0 && time_evals%eval_resolution == 0){
-        if (timeMs()-start_time>= MAX_TIME){
-            abort_alg = true; 
-            return true;
-        }
-    }   
-    time_evals++;
+    if(timeMs() - start_time >= MAX_TIME)
+        return;
 
     calls_performed++;
 
@@ -521,127 +551,64 @@ bool paths_075(int u, int t){
         total_length+=curr_path_len;
         curr_path_len--;
         good_diff_len++;
-
-        // cout << "Sol ";
-        // for(auto x : current_sol)
-        //     cout << x << " ";
-        // cout << endl;
-
-        // current_sol.pop_back();
-        return true;
+        return;
     }
 
-    // we have non-deleted neighbors to explore
-    if(degree(u) > 0){
-        remove_node(u); // also adds to stack
+    // at every step, we perform the visit which deletes non-reachable nodes
+    remove_node(u); // I need to remove the node to ensure correct placement on deleted stack
 
-        bool success = true; 
-        int num_good_children = 0;
-        for(auto v: G[u]){ 
-            if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
-                success = paths_075(v, t);
+    reinsert_simple(u);
+    find_caterpillar(u, t);
+    remove_simple(u);
 
-                if(success)
-                    num_good_children++;
+    if(degree(u) == 0){
+        throw logic_error("Error: Found a dead end in correct algorithm");
+    }
 
-                // I need to make sure that if we are in the second condition, we de-stack and reinsert stuff
-                if(degree(u) == 0 && lampadina){ // ALTERNATIVE
-                    curr_path_len--;
-                    dead_diff_len++;
-                    //current_sol.pop_back();
-                    return false; // return at first failing neighbor
-                }
-
-                // here we can go back, but re-inserting deleted nodes
-                if(degree(u) == num_good_children && lampadina){ // NOTE: Degree is now > 0
-                    // rimettere le cose a posto       
-                    // pop stack until u (included) and mark as not deleted
-                    while(del_stack.top() != u){
-                        reinsert_node();
-                    }
-                    reinsert_node(); // here we are inserting u 
-
-                    curr_path_len--;
-                    good_diff_len++;
-                    //current_sol.pop_back();
-                    return true; // at least one child was good at this point
-                }
-
-                // SAME AS degree(u)>num_good_children AND LAMPADINA
-                if(degree(u)>0 && lampadina){ //  HERE WE ARE AT THE ARTICULATION POINT
-                    lampadina=false;
-                    reinsert_simple(u);
-                    find_caterpillar(u, t); // compute caterpillar to delete useless neighbors
-                    remove_simple(u);
-                }
-            }
+    // we have non-deleted neighbors; explore them
+    // if(degree(u) > 0){ // don't need this anymore
+    for(auto v: G[u]){ 
+        if(!deleted[v]){ // we take the next non-deleted element of G[u], noting that these deleted elements dynamically change during the for loop
+            paths_classic_BCC(v, t);
         }
-
-        // rimettere le cose a posto       
-        // pop stack until u (included) and mark as not deleted
-        while(del_stack.top() != u){
-            reinsert_node();
-        }
-        reinsert_node(); // here we are inserting u 
-
-        curr_path_len--;
-        good_diff_len++;
-        //current_sol.pop_back();
-        return true;
+        
     }
 
-    // here we are in the case where degree(u) = 0. If lampadina, we just return; else we perform the visit
-    // if(degree(u) == 0 && !lampadina){ 
-    if(lampadina){
-        curr_path_len--;
-        dead_diff_len++;
-        //current_sol.pop_back();
-        return false;
-    }
-
-    // here we are just arriving in a node of degree zero
-    reachability_check(t);
-    lampadina = true;
+    // rimettere le cose a posto       
+    // pop stack until u (included) and mark as not deleted
+    while(del_stack.top() != u)
+        reinsert_node();
     
-    dead_ends++;
-    dead_total_len+=curr_path_len;
-    dead_diff_len++;
+    reinsert_node(); // here we are inserting u 
+
     curr_path_len--;
-    //current_sol.pop_back();
-    return false;
+    good_diff_len++;
+    return;
 }
 
-void enumerate_paths_075(int s, int t){
+void enumerate_paths_classical(int s, int t){
     count_paths = 0;
     total_length = 0;
-    dead_ends = 0;
     calls_performed = 0;
     curr_path_len = -1;
     good_diff_len = 0;
-    dead_diff_len = 0;
-    dead_total_len = 0;
-    visits_performed_reach= 0;
-    visits_performed_cat = 0;
-    paths_075(s,t);
+    visits_performed= 0;
+    paths_classic_BCC(s,t);
     good_diff_len--; // source returned true and thus added one 
 
     return;
 }
 
+
 int main(int argc, char* argv[]){ 
-    if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " FILEDIRECTORY source target MAX_TIME " << endl;
+
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
         return 1;
     }
 
     char * input_filename = argv[1];
-    int s = atoi(argv[2]);
-    int t = atoi(argv[3]);
-    MAX_TIME = atoi(argv[4])*1000;
-
     create_graph(input_filename); // initialize 
-    // create_graph_old(input_filename);
-
 
     disc.resize(G.size());
     low.resize(G.size());
@@ -649,36 +616,33 @@ int main(int argc, char* argv[]){
     parent.resize(G.size());
 
     // find max degree of graph
-    // int maxdeg = 0;
-    // for(int u=0; u < G.size(); u++){
-    //     if(maxdeg< degree(u)){
-    //         maxdeg = degree(u);
-    //     }
-    // }
+    int maxdeg = 0;
+    for(int u=0; u < G.size(); u++){
+        if(maxdeg< degree(u)){
+            maxdeg = degree(u);
+        }
+    }
 
     // here we also find the number of edges
     int numedges = 0;
-    int numnodes = 0;
+    int numnodes = G.size();
 
     for(int node = 0; node < G.size(); node++){
-        if(!deleted[node]){
-            numnodes++;
-            numedges += G[node].size();
-        }
-        
+        numedges += G[node].size();
     }
     numedges = numedges/2;
-    // cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    // int s , t;
-    // cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    // cin >> s;
-    // cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    // cin >> t;
+    cout << "Graph has maximum degree " << maxdeg << endl; 
+
+    int s , t;
+    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
+    cin >> s;
+    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
+    cin >> t;
 
     // initialize all nodes as non-reachable
     for(int i = 0; i< reachable.size(); i++)
-            reachable[i] = 0;
+        reachable[i] = 0;
 
     // chech reachability of s from t
     DFS(t);
@@ -694,65 +658,67 @@ int main(int argc, char* argv[]){
             deleted[i]= 1;
     }
 
-    print_count = 0;
+    // target_stack.erase(target_stack.begin(), target_stack.end());
+    // BCC_stack.erase(BCC_stack.begin(), BCC_stack.end());
+    // target_stack.push_back(t);
 
     deleted_w_caterpillar = 0;
-    find_caterpillar(s,t);
+    find_caterpillar(s,t); // last art is now set up
+    // cout << "Last art point is " << last_art << endl; 
 
+    cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;
+    cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
     
-
-    // cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl<<flush;
-    // cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
 
     time_reachability = 0;
     time_caterpillar = 0;
 
-    // cout << "Insert max time (s): ";
-    // cin >> MAX_TIME;
+    // long MAX_CALLS; 
 
-    // MAX_TIME = MAX_TIME*1000;
+    // cout << "Insert max number of recursive calls: ";
+    // cin >> MAX_CALLS;
 
-    // char foutput;
-    // cout << "Want file output? (y/n) ";
-    // cin >> foutput;
+    cout << "Insert max time (s): ";
+    cin >> MAX_TIME;
+
+    MAX_TIME = MAX_TIME*1000;
+
+    char foutput;
+    cout << "Want file output? (y/n) ";
+    cin >> foutput;
 
     start_time = timeMs();
 
     // standard: s = 0, t=last node
-    enumerate_paths_075(s,t);
+    enumerate_paths_classical(s, t);
     uint64_t duration = (timeMs() - start_time);
 
-    cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed_reach + visits_performed_cat << " " << count_paths << " " << dead_ends << endl;
+    cout << endl;
+    cout << "File: "<< input_filename;
+    cout << "\ts= " << s;
+    cout << "\tt= " << t<< endl;
+    cout << "Time (ms): " << duration<< endl;
+    cout << "Rec calls: " << calls_performed;
+    cout << "\tVisits: " << visits_performed << endl;
+    cout << "Paths found: " <<count_paths << endl;
+    // " ; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;
+    // cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
-    // cout << endl;
-    // cout << "File: "<< input_filename;
-    // cout << "\ts= " << s;
-    // cout << "\tt= " << t<< endl;
-    // cout << "Time (ms): " << duration<< endl;
-    // cout << "Rec calls: " << calls_performed;
-    // cout << "\tVisits: " << visits_performed_reach + visits_performed_cat << endl;
-    // cout << "Paths found: " <<count_paths;
-    // cout << "\tDead ends: " << dead_ends << endl;
-    // cout << "Reachability time (ms): "<< time_reachability;
-    // cout << "\tCaterpillar time (ms): " << time_caterpillar<< endl; 
 
-    // // cout << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
-
-    // if(foutput == 'y' || foutput == 'Y'){
-    //     // reporting to file
-    //     ofstream output_file; 
-    //     output_file.open("output-v075.txt", ios::app);
-    //     output_file << "-----------------------------------------------------"<< endl;
-    //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
-    //     output_file << "Visits performed are  " << visits_performed_reach + visits_performed_cat <<" ; of which " << visits_performed_reach << " from reachability and " << visits_performed_cat << " from caterpillar."<< endl;
-    //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    //     output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    //     output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
-    //     output_file << "Time spent in reachability visits is "<< time_reachability << "; time spent in caterpillar visits is " << time_caterpillar<< endl;
-    //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    //     output_file.close();
-    // }
+    if(foutput == 'y' || foutput == 'Y'){
+        // reporting to file
+        ofstream output_file; 
+        output_file.open("output-classical.txt", ios::app);
+        output_file << "-----------------------------------------------------"<< endl;
+        output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+        output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
+        output_file << "Visits of the graph performed are  " << visits_performed << endl;
+        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+        // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+        output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+        output_file.close();
+    }
+    
 
     return 0;
 }

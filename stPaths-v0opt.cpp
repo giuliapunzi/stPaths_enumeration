@@ -30,9 +30,7 @@ unsigned long dead_diff_len; // edges only belonging to dead ends; increase by 1
 long MAX_TIME; 
 unsigned long calls_performed;
 unsigned long visits_performed;
-long time_reachability;
 uint64_t start_time;
-
 
 
 long time_evals = 0;
@@ -329,7 +327,7 @@ bool paths_0(int u, int t){
             abort_alg = true; 
             return true;
         }
-    }
+    }   
     time_evals++;
 
     calls_performed++;
@@ -370,27 +368,30 @@ bool paths_0(int u, int t){
 
     bool neigh_value = true;
     bool ret_value = false;
-    bool sofar_good = true;
+    bool first_fail = false;
     // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
     int i = 0;
     vector<int> good_neigh;
 
     for(i = 0; i < G[u].size(); i++){
         int v = G[u][i];
-        if(!deleted[v] && sofar_good){
-            neigh_value = paths_0(v, t);
-            ret_value = ret_value || neigh_value;
-            sofar_good = neigh_value; // false at first failing neighbor
-
-            if(!sofar_good){
+        if(!deleted[v] ){
+            if(first_fail){ // doing it before delays it so that if it is the last neighbor, no extra reachability
                 check_neighbors(u, t);
 
                 // need to store the good neighbors right away as next recursive calls might overwrite them
-                for(int j = i+1; j < G[u].size(); j++){
+                for(int j = i; j < G[u].size(); j++){
                     if(!deleted[G[u][j]] && reachable[G[u][j]])
                         good_neigh.push_back(G[u][j]);
                 }
+
+                break;
             }
+
+            neigh_value = paths_0(v, t);
+            ret_value = ret_value || neigh_value;
+            first_fail = !neigh_value; // false at first failing neighbor 
+            
         }
     }
     
@@ -439,6 +440,7 @@ int main(int argc, char* argv[]){
     int s = atoi(argv[2]);
     int t = atoi(argv[3]);
     MAX_TIME = atoi(argv[4])*1000;
+
     create_graph(input_filename);
 
     reachable.resize(G.size());
@@ -495,15 +497,12 @@ int main(int argc, char* argv[]){
     // cout << "Want file output? (y/n) ";
     // cin >> foutput;
 
-    time_reachability=0;
-
     start_time = timeMs();
     // standard: s = 0, t=last node
     enumerate_paths_0(s, t);
     uint64_t duration = (timeMs() - start_time);
 
     cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed << " " << count_paths << " " << dead_ends << endl;
-
 
     // cout << endl;
     // cout << "File: "<< input_filename;
@@ -514,19 +513,17 @@ int main(int argc, char* argv[]){
     // cout << "\tVisits: " << visits_performed << endl;
     // cout << "Paths found: " <<count_paths;
     // cout << "\tDead ends: " << dead_ends << endl;
-    // cout << "Reachability time (ms): "<< time_reachability << endl;
 
     // if(foutput == 'y' || foutput == 'Y'){
     //     // reporting to file
     //     ofstream output_file; 
-    //     output_file.open("output-v0.txt", ios::app);
+    //     output_file.open("output-v0-copy.txt", ios::app);
     //     output_file << "-----------------------------------------------------"<< endl;
     //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
     //     output_file << "Visits of the graph performed are  " << visits_performed << endl;
     //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
     //     output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
-    //     output_file << "Time spent in reachability: " << time_reachability << endl;
     //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     //     output_file.close();
     // }

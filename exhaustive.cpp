@@ -30,7 +30,6 @@ unsigned long dead_diff_len; // edges only belonging to dead ends; increase by 1
 long MAX_TIME; 
 unsigned long calls_performed;
 unsigned long visits_performed;
-long time_reachability;
 uint64_t start_time;
 
 
@@ -38,7 +37,6 @@ uint64_t start_time;
 long time_evals = 0;
 long eval_resolution = 1000;
 bool abort_alg = false;
-
 
 uint64_t timeMs() {
   using namespace std::chrono;
@@ -271,51 +269,9 @@ void DFS(int u){
 }
 
 
-// starts a visit from t, and marks as good neighbors the neighbors of s that
-// are reached through the visit. Outputs the vector of these good neighbors.
-void check_neighbors(int s, int t){
-    // vector<bool> visited(G.size());
-    // visits_performed++;
-
-    // // initialize all deleted nodes as visited
-    // for(int i = 0; i< visited.size(); i++){
-    //     if(deleted[i])
-    //         visited[i] = true;
-    //     else
-    //         visited[i] = false;
-    // }
-    visits_performed++;
-
-    // initialize all deleted nodes as reachable
-    for(int i = 0; i< reachable.size(); i++){
-        if(deleted[i])
-            reachable[i] = 1;
-        else
-            reachable[i] = 0;
-    }
-
-    // uint64_t start = timeMs();
-    // launch DFS from node t
-    DFS(t);
-    // time_reachability += (timeMs() - start);
-
-    // vector<int> neigh = neighbors(s);
-    // // find out which neighbors of s have been visited, and output them
-    // vector<bool> good_neighbors(neigh.size());
-    // for(int i = 0; i < neigh.size(); i++){
-    //     if(reachable[neigh[i]])
-    //         good_neighbors[i] = true;
-    //     else
-    //         good_neighbors[i] = false;
-            
-    // }
-    return;
-}
-
-
 // paths must return the status, either success or fail
 // we do so by returning true/false: true = success
-bool paths_0(int u, int t){
+bool paths_baseline(int u, int t){
     curr_path_len++;
     // cout << "Call for " << u << endl;
     // if(calls_performed >= MAX_CALLS)
@@ -323,13 +279,14 @@ bool paths_0(int u, int t){
     
     // if(timeMs() - start_time >= MAX_TIME)
     //     return true;
+
     if(abort_alg) return true;
     else if(MAX_TIME>0 && time_evals%eval_resolution == 0){
         if (timeMs()-start_time>= MAX_TIME){
             abort_alg = true; 
             return true;
         }
-    }
+    }   
     time_evals++;
 
     calls_performed++;
@@ -354,7 +311,6 @@ bool paths_0(int u, int t){
         // dead ends is increased: we failed on a node
         dead_ends++;
 
-
         // increase total dead ends' length
         dead_total_len = dead_total_len + curr_path_len;
         dead_diff_len++;
@@ -368,36 +324,18 @@ bool paths_0(int u, int t){
     // here degree(u)>0 and u is not t
     remove_node(u);
 
-    bool neigh_value = true;
+    bool neigh_value = false;
     bool ret_value = false;
     bool sofar_good = true;
     // int num_good_neigh = 0; // counter needed for good_diff_len: the latter is increased only if exactly one good neighbor
     int i = 0;
-    vector<int> good_neigh;
 
     for(i = 0; i < G[u].size(); i++){
         int v = G[u][i];
-        if(!deleted[v] && sofar_good){
-            neigh_value = paths_0(v, t);
+        if(!deleted[v]){
+            neigh_value = paths_baseline(v, t);
             ret_value = ret_value || neigh_value;
-            sofar_good = neigh_value; // false at first failing neighbor
-
-            if(!sofar_good){
-                check_neighbors(u, t);
-
-                // need to store the good neighbors right away as next recursive calls might overwrite them
-                for(int j = i+1; j < G[u].size(); j++){
-                    if(!deleted[G[u][j]] && reachable[G[u][j]])
-                        good_neigh.push_back(G[u][j]);
-                }
-            }
         }
-    }
-    
-    // the ones left are sure to not fail
-    for(auto v : good_neigh){
-        neigh_value = paths_0(v, t);
-        ret_value = ret_value || neigh_value;            
     }
     
     reinsert_node(u);
@@ -413,7 +351,7 @@ bool paths_0(int u, int t){
     return ret_value;
 }
 
-void enumerate_paths_0(int s, int t){
+void enumerate_paths_baseline(int s, int t){
     count_paths = 0;
     total_length = 0;
     dead_ends = 0;
@@ -423,7 +361,7 @@ void enumerate_paths_0(int s, int t){
     dead_diff_len = 0;
     dead_total_len = 0;
     visits_performed=0;
-    paths_0(s,t);
+    paths_baseline(s,t);
     good_diff_len--; // source returned true and thus added one 
     return;
 }
@@ -439,6 +377,7 @@ int main(int argc, char* argv[]){
     int s = atoi(argv[2]);
     int t = atoi(argv[3]);
     MAX_TIME = atoi(argv[4])*1000;
+
     create_graph(input_filename);
 
     reachable.resize(G.size());
@@ -495,11 +434,10 @@ int main(int argc, char* argv[]){
     // cout << "Want file output? (y/n) ";
     // cin >> foutput;
 
-    time_reachability=0;
 
     start_time = timeMs();
     // standard: s = 0, t=last node
-    enumerate_paths_0(s, t);
+    enumerate_paths_baseline(s, t);
     uint64_t duration = (timeMs() - start_time);
 
     cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed << " " << count_paths << " " << dead_ends << endl;
@@ -514,19 +452,17 @@ int main(int argc, char* argv[]){
     // cout << "\tVisits: " << visits_performed << endl;
     // cout << "Paths found: " <<count_paths;
     // cout << "\tDead ends: " << dead_ends << endl;
-    // cout << "Reachability time (ms): "<< time_reachability << endl;
 
     // if(foutput == 'y' || foutput == 'Y'){
     //     // reporting to file
     //     ofstream output_file; 
-    //     output_file.open("output-v0.txt", ios::app);
+    //     output_file.open("output-baseline.txt", ios::app);
     //     output_file << "-----------------------------------------------------"<< endl;
     //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
     //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
     //     output_file << "Visits of the graph performed are  " << visits_performed << endl;
     //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
     //     output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len << endl;
-    //     output_file << "Time spent in reachability: " << time_reachability << endl;
     //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
     //     output_file.close();
     // }

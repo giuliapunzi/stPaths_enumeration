@@ -41,7 +41,7 @@ long dead_diff_len; // edges only belonging to dead ends; increase by 1 every ti
 // const long MAX_CALLS = 50000000000;
 // const long MAX_TIME = 60000;
 long MAX_TIME; 
-unsigned long calls_performed;
+int calls_performed;
 bool lampadina;
 uint64_t  start_time;
 
@@ -50,16 +50,12 @@ long long deleted_w_caterpillar;
 bool is_edge(int u, int v);
 
 int print_count;
-unsigned long visits_performed_reach;
-unsigned long visits_performed_cat;
+long visits_performed_reach;
+long visits_performed_cat;
 
 uint64_t time_reachability;
 uint64_t time_caterpillar;
 
-
-long time_evals = 0;
-long eval_resolution = 1000;
-bool abort_alg = false;
 
 uint64_t timeMs() {
   using namespace std::chrono;
@@ -109,7 +105,8 @@ void create_graph(char* filename)
         
     }
 
-    // cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+
 
     fclose(input_graph);
     return;
@@ -476,7 +473,7 @@ void find_caterpillar(int s, int t)
 
     // cout << "About to find art points from "<< s << " to "<< t <<endl;
     // printGraph();
-    // uint64_t start = timeMs();
+    uint64_t start = timeMs();
 
     // sizes of the stacks
     int size_t_stack = target_stack.size();
@@ -515,7 +512,7 @@ void find_caterpillar(int s, int t)
         throw logic_error("Wrong number of targets wrt BCCs when exiting caterpillar");
 
 
-    // time_caterpillar += (timeMs() - start);
+    time_caterpillar += (timeMs() - start);
     return;
 }
 
@@ -544,7 +541,7 @@ void reachability_check(int t){
     visits_performed_reach++;
 
 
-    // uint64_t start = timeMs();
+    uint64_t start = timeMs();
     // launch DFS from node t
     // DFS(t);
 
@@ -618,7 +615,7 @@ void reachability_check(int t){
     //         cout << i << " ";
     // cout << endl;
 
-    // time_reachability += (timeMs() - start);
+    time_reachability += (timeMs() - start);
 
     return;
 }
@@ -636,17 +633,8 @@ bool paths_1(int u, int t){
     // if(calls_performed >= MAX_CALLS)
     //     return true;
 
-    // if(timeMs() - start_time >= MAX_TIME)
-    //     return true;
-
-    if(abort_alg) return true;
-    else if(MAX_TIME>0 && time_evals%eval_resolution == 0){
-        if (timeMs()-start_time>= MAX_TIME){
-            abort_alg = true; 
-            return true;
-        }
-    }   
-    time_evals++;
+    if(timeMs() - start_time >= MAX_TIME)
+        return true;
 
     calls_performed++;
 
@@ -859,16 +847,12 @@ void enumerate_paths_1(int s, int t){
 }
 
 int main(int argc, char* argv[]){ 
-    if (argc < 5) {
-        std::cerr << "Usage: " << argv[0] << " FILEDIRECTORY source target MAX_TIME " << endl;
+    if (argc < 2) {
+        std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
         return 1;
     }
 
     char * input_filename = argv[1];
-    int s = atoi(argv[2]);
-    int t = atoi(argv[3]);
-    MAX_TIME = atoi(argv[4])*1000;
-
     create_graph(input_filename);
     // create_graph_old(input_filename); // initialize 
 
@@ -901,13 +885,13 @@ int main(int argc, char* argv[]){
     //         deleted[i]= 1;
     // }
 
-    // // find max degree of graph
-    // int maxdeg = 0;
-    // for(int u=0; u < G.size(); u++){
-    //     if(maxdeg< degree(u)){
-    //         maxdeg = degree(u);
-    //     }
-    // }
+    // find max degree of graph
+    int maxdeg = 0;
+    for(int u=0; u < G.size(); u++){
+        if(maxdeg< degree(u)){
+            maxdeg = degree(u);
+        }
+    }
 
     
 
@@ -923,13 +907,13 @@ int main(int argc, char* argv[]){
         
     }
     numedges = numedges/2;
-    // cout << "Graph has maximum degree " << maxdeg << endl; 
+    cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    // int s , t;
-    // cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    // cin >> s;
-    // cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    // cin >> t;
+    int s , t;
+    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
+    cin >> s;
+    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
+    cin >> t;
 
     // initialize all nodes as non-reachable
     for(int i = 0; i< reachable.size(); i++)
@@ -964,8 +948,8 @@ int main(int argc, char* argv[]){
     find_caterpillar(s,t); // last art is now set up
     // cout << "Last art point is " << last_art << endl; 
 
-    // cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;
-    // cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
+    cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;
+    cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
     
     // cout<< "Deleted nodes' vector: ";
     // for(int i= 0; i< G.size(); i++)
@@ -983,15 +967,15 @@ int main(int argc, char* argv[]){
     time_reachability = 0;
     time_caterpillar = 0;
 
-    // cout << "Insert max time (s): ";
-    // cin >> MAX_TIME;
+    cout << "Insert max time (s): ";
+    cin >> MAX_TIME;
 
-    // MAX_TIME = MAX_TIME*1000;
+    MAX_TIME = MAX_TIME*1000;
 
 
-    // char foutput;
-    // cout << "Want file output? (y/n) ";
-    // cin >> foutput;
+    char foutput;
+    cout << "Want file output? (y/n) ";
+    cin >> foutput;
 
     // char foutput = 'n';
 
@@ -1001,36 +985,33 @@ int main(int argc, char* argv[]){
     enumerate_paths_1(s,t);
     uint64_t duration = (timeMs() - start_time);
 
-    cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed_reach + visits_performed_cat << " " << count_paths << " " << dead_ends << endl;
+    cout << endl;
+    cout << "File: "<< input_filename;
+    cout << "\ts= " << s;
+    cout << "\tt= " << t<< endl;
+    cout << "Time (ms): " << duration<< endl;
+    cout << "Rec calls: " << calls_performed;
+    cout << "\tVisits: " << visits_performed_cat + visits_performed_reach << endl;
+    cout << "Paths found: " <<count_paths;
+    cout << "\tDead ends: " << dead_ends << endl;
+    cout << "Reachability time (ms): "<< time_reachability;
+    cout << "\tCaterpillar time (ms): " << time_caterpillar<< endl;
 
-
-    // cout << endl;
-    // cout << "File: "<< input_filename;
-    // cout << "\ts= " << s;
-    // cout << "\tt= " << t<< endl;
-    // cout << "Time (ms): " << duration<< endl;
-    // cout << "Rec calls: " << calls_performed;
-    // cout << "\tVisits: " << visits_performed_cat + visits_performed_reach << endl;
-    // cout << "Paths found: " <<count_paths;
-    // cout << "\tDead ends: " << dead_ends << endl;
-    // cout << "Reachability time (ms): "<< time_reachability;
-    // cout << "\tCaterpillar time (ms): " << time_caterpillar<< endl;
-
-    // if(foutput == 'y' || foutput == 'Y'){
-    //     // reporting to file
-    //     ofstream output_file; 
-    //     output_file.open("output-v95.txt", ios::app);
-    //     output_file << "-----------------------------------------------------"<< endl;
-    //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-    //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
-    //     output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability, and " << visits_performed_cat << " from caterpillar " << endl;    
-    //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-    //     output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-    //     output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
-    //     output_file << "Time spent in reachability visits is "<< time_reachability << "; time spent in caterpillar visits is " << time_caterpillar<< endl;
-    //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-    //     output_file.close();
-    // }
+    if(foutput == 'y' || foutput == 'Y'){
+        // reporting to file
+        ofstream output_file; 
+        output_file.open("output-v95.txt", ios::app);
+        output_file << "-----------------------------------------------------"<< endl;
+        output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+        output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
+        output_file << "Visits performed are " << visits_performed_reach + visits_performed_cat <<"; of which " << visits_performed_reach << " from reachability, and " << visits_performed_cat << " from caterpillar " << endl;    
+        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+        output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+        output_file << "Nodes removed with caterpillar are "<< deleted_w_caterpillar << endl;
+        output_file << "Time spent in reachability visits is "<< time_reachability << "; time spent in caterpillar visits is " << time_caterpillar<< endl;
+        output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+        output_file.close();
+    }
 
 
     return 0;

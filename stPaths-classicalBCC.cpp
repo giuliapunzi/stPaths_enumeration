@@ -41,6 +41,12 @@ int calls_performed;
 bool is_edge(int u, int v);
 
 
+
+long time_evals = 0;
+long eval_resolution = 1000;
+bool abort_alg = false;
+
+
 uint64_t timeMs() {
   using namespace std::chrono;
   return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
@@ -89,7 +95,7 @@ void create_graph(char* filename)
         
     }
 
-    cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
+    // cout << "Input graph has " << N << " nodes and " << real_edges << " edges. "<< endl;
 
 
     fclose(input_graph);
@@ -97,8 +103,7 @@ void create_graph(char* filename)
 }
  
 
-// create graph from file filename 
-// WE REMOVE SELF LOOPS
+// create graph from file filename FOR OLDER GRAPH FORMAT
 void create_graph_old(char* filename)
 {
     FILE* input_graph = fopen(filename, "r");
@@ -510,8 +515,10 @@ void reachability_check(int t){
             reachable[i] = 0;
     }
 
+    // uint64_t start = timeMs();
     // launch DFS from node t
     DFS(t);
+    // time_reachability += (timeMs() - start);
 
     // go through all nodes of the graph and deleted the ones with reachable value = 0
     // delete means both mark deleted[u] = 0 and add them to the stack of deleted nodes
@@ -537,8 +544,16 @@ void paths_classic_BCC(int u, int t){
     // if(calls_performed >= MAX_CALLS)
     //     return;
 
-    if(timeMs() - start_time >= MAX_TIME)
-        return;
+    // if(timeMs() - start_time >= MAX_TIME)
+    //     return;
+    if(abort_alg) return;
+    else if(MAX_TIME>0 && time_evals%eval_resolution == 0){
+        if (timeMs()-start_time>= MAX_TIME){
+            abort_alg = true; 
+            return;
+        }
+    }
+    time_evals++;
 
     calls_performed++;
 
@@ -602,12 +617,15 @@ void enumerate_paths_classical(int s, int t){
 
 int main(int argc, char* argv[]){ 
 
-    if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " <FILENAME>" << std::endl;
+    if (argc < 5) {
+        std::cerr << "Usage: " << argv[0] << " FILEDIRECTORY source target MAX_TIME " << endl;
         return 1;
     }
 
     char * input_filename = argv[1];
+    int s = atoi(argv[2]);
+    int t = atoi(argv[3]);
+    MAX_TIME = atoi(argv[4])*1000;
     create_graph(input_filename); // initialize 
 
     disc.resize(G.size());
@@ -616,12 +634,12 @@ int main(int argc, char* argv[]){
     parent.resize(G.size());
 
     // find max degree of graph
-    int maxdeg = 0;
-    for(int u=0; u < G.size(); u++){
-        if(maxdeg< degree(u)){
-            maxdeg = degree(u);
-        }
-    }
+    // int maxdeg = 0;
+    // for(int u=0; u < G.size(); u++){
+    //     if(maxdeg< degree(u)){
+    //         maxdeg = degree(u);
+    //     }
+    // }
 
     // here we also find the number of edges
     int numedges = 0;
@@ -632,13 +650,13 @@ int main(int argc, char* argv[]){
     }
     numedges = numedges/2;
 
-    cout << "Graph has maximum degree " << maxdeg << endl; 
+    // cout << "Graph has maximum degree " << maxdeg << endl; 
 
-    int s , t;
-    cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
-    cin >> s;
-    cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
-    cin >> t;
+    // int s , t;
+    // cout << "Insert value for s from 0 to " << numnodes-1 << ": ";
+    // cin >> s;
+    // cout << "Insert value for t from 0 to " << numnodes-1 << ": ";
+    // cin >> t;
 
     // initialize all nodes as non-reachable
     for(int i = 0; i< reachable.size(); i++)
@@ -666,8 +684,8 @@ int main(int argc, char* argv[]){
     find_caterpillar(s,t); // last art is now set up
     // cout << "Last art point is " << last_art << endl; 
 
-    cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;
-    cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
+    // cout << "First caterpillar removed " << deleted_w_caterpillar << " nodes. " << endl;
+    // cout << "Nodes left are " << numnodes << ", and edges left are " << numedges << endl;
     
 
     time_reachability = 0;
@@ -678,14 +696,14 @@ int main(int argc, char* argv[]){
     // cout << "Insert max number of recursive calls: ";
     // cin >> MAX_CALLS;
 
-    cout << "Insert max time (s): ";
-    cin >> MAX_TIME;
+    // cout << "Insert max time (s): ";
+    // cin >> MAX_TIME;
 
-    MAX_TIME = MAX_TIME*1000;
+    // MAX_TIME = MAX_TIME*1000;
 
-    char foutput;
-    cout << "Want file output? (y/n) ";
-    cin >> foutput;
+    // char foutput;
+    // cout << "Want file output? (y/n) ";
+    // cin >> foutput;
 
     start_time = timeMs();
 
@@ -693,31 +711,34 @@ int main(int argc, char* argv[]){
     enumerate_paths_classical(s, t);
     uint64_t duration = (timeMs() - start_time);
 
-    cout << endl;
-    cout << "File: "<< input_filename;
-    cout << "\ts= " << s;
-    cout << "\tt= " << t<< endl;
-    cout << "Time (ms): " << duration<< endl;
-    cout << "Rec calls: " << calls_performed;
-    cout << "\tVisits: " << visits_performed << endl;
-    cout << "Paths found: " <<count_paths << endl;
+    cout << input_filename << " "<< numnodes << " " << numedges << " " << duration << " " << calls_performed << " " << visits_performed << " " << count_paths << endl;
+
+
+    // cout << endl;
+    // cout << "File: "<< input_filename;
+    // cout << "\ts= " << s;
+    // cout << "\tt= " << t<< endl;
+    // cout << "Time (ms): " << duration<< endl;
+    // cout << "Rec calls: " << calls_performed;
+    // cout << "\tVisits: " << visits_performed << endl;
+    // cout << "Paths found: " <<count_paths << endl;
     // " ; their total length is "<< total_length << " and their partial length is " << good_diff_len << endl;
     // cout << "Dead ends are " << dead_ends << "; their total length is " << dead_total_len << " and their partial length is " << dead_diff_len <<endl;
 
 
-    if(foutput == 'y' || foutput == 'Y'){
-        // reporting to file
-        ofstream output_file; 
-        output_file.open("output-classical.txt", ios::app);
-        output_file << "-----------------------------------------------------"<< endl;
-        output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
-        output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
-        output_file << "Visits of the graph performed are  " << visits_performed << endl;
-        output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
-        // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
-        output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
-        output_file.close();
-    }
+    // if(foutput == 'y' || foutput == 'Y'){
+    //     // reporting to file
+    //     ofstream output_file; 
+    //     output_file.open("output-classicalBCC.txt", ios::app);
+    //     output_file << "-----------------------------------------------------"<< endl;
+    //     output_file << "Output for graph with " << numnodes << " nodes, " << numedges << " edges and max degree " << maxdeg << " (" << input_filename << ")"<< endl;
+    //     output_file << calls_performed << " calls performed in " << duration << " ms" << endl;
+    //     output_file << "Visits of the graph performed are  " << visits_performed << endl;
+    //     output_file << "Paths from s="<< s <<" to t="<< t << " found are " <<count_paths << " for a total length of " << total_length << " and a partial length of " << good_diff_len << endl;
+    //     // output_file<< "Dead ends are " << dead_ends << " for a total length of "<< dead_total_len << " and a partial length of " << dead_diff_len <<endl;
+    //     output_file << "-----------------------------------------------------"<< endl<<endl<<endl;
+    //     output_file.close();
+    // }
     
 
     return 0;
